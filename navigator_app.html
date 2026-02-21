@@ -254,6 +254,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
         <div id="step-dots"></div>
         <span id="dist-remaining">—m</span>
       </div>
+
+      <!-- Debug panel — remove once confirmed working -->
+      <div id="debug-panel" style="padding:8px 18px;background:#0a0a0f;border-top:1px solid #252840;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a5d7a;line-height:1.8">
+        <div>GPS: <span id="dbg-gps">—</span></div>
+        <div>Heading: <span id="dbg-heading">—</span> | Target bearing: <span id="dbg-bearing">—</span></div>
+        <div>Diff: <span id="dbg-diff">—</span> | Dist: <span id="dbg-dist">—</span></div>
+        <div>Last cmd: <span id="dbg-cmd" style="color:#4fffb0">—</span> | BLE: <span id="dbg-ble">—</span></div>
+      </div>
     </div>
 
   </div><!-- /screen-nav -->
@@ -451,29 +459,30 @@ function onOrientation(e) {
   if (heading == null) return;
   userHeading = Math.round(heading);
   document.getElementById('compass-heading').textContent = userHeading + '°';
-  // Rotate needle
   document.getElementById('compass-needle').style.transform = `rotate(${userHeading}deg)`;
-  // Update hint if navigating
-  if (destRoom && navSteps.length) updateCompassHint();
+  // Update compass hint whenever navigating (no navSteps check needed)
+  if (navActive && destRoom) updateCompassHint();
 }
 
 function updateCompassHint() {
-  if (!userLat || !destRoom) return;
-  const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
-  document.getElementById('target-bearing').textContent = Math.round(bearing) + '°';
-  // Arc shows progress toward target bearing
-  const arc = document.getElementById('compass-arc');
-  const pct = Math.abs(((bearing - userHeading + 540) % 360) - 180) / 180;
-  arc.style.strokeDashoffset = 138 - (138 * (1 - pct));
+  if (!userLat || !destRoom?.lat || userHeading === null) return;
 
-  if (userHeading != null) {
-    const diff = ((bearing - userHeading + 540) % 360) - 180;
-    let hint = '';
-    if (Math.abs(diff) < 20)      hint = '✅ Facing destination';
-    else if (diff > 0)            hint = `↻ Turn right ${Math.round(diff)}°`;
-    else                          hint = `↺ Turn left ${Math.round(-diff)}°`;
-    document.getElementById('compass-hint').textContent = hint;
-  }
+  const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
+  const diff    = ((bearing - userHeading + 540) % 360) - 180;
+
+  // Update display
+  document.getElementById('target-bearing').textContent = Math.round(bearing) + '°';
+
+  // Arc fill
+  const pct = Math.abs(diff) / 180;
+  document.getElementById('compass-arc').style.strokeDashoffset = 138 * pct;
+
+  // Hint text
+  let hint = '';
+  if (Math.abs(diff) < 20)  hint = '✅ Facing destination';
+  else if (diff > 0)        hint = `↻ Turn right ${Math.round(diff)}°`;
+  else                      hint = `↺ Turn left ${Math.round(-diff)}°`;
+  document.getElementById('compass-hint').textContent = hint;
 }
 
 function getBearing(lat1, lng1, lat2, lng2) {
@@ -490,6 +499,15 @@ function haversine(lat1, lng1, lat2, lng2) {
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updateDistRemaining(dist) {
+  if (dist === undefined) {
+    if (!userLat || !destRoom?.lat) return;
+    dist = haversine(userLat, userLng, destRoom.lat, destRoom.lng);
+  }
+  const el = document.getElementById('dist-remaining');
+  if (el) el.textContent = dist < 1000 ? Math.round(dist) + 'm away' : (dist/1000).toFixed(2) + 'km away';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -680,10 +698,25 @@ function startNavTo(room) {
 async function autoNavTick() {
   if (!navActive || !destRoom) return;
 
+  // ── Live debug output ─────────────────────────────────
+  document.getElementById('dbg-gps').textContent =
+    userLat ? `${userLat.toFixed(5)}, ${userLng.toFixed(5)}` : 'no fix';
+  document.getElementById('dbg-heading').textContent =
+    userHeading !== null ? userHeading + '°' : 'no compass';
+  document.getElementById('dbg-ble').textContent =
+    bleConnected ? 'connected' : 'NOT connected';
+
   // ── Check arrived ─────────────────────────────────────
   if (userLat && destRoom.lat) {
     const dist = haversine(userLat, userLng, destRoom.lat, destRoom.lng);
     updateDistRemaining(dist);
+
+    // Debug
+    const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
+    const diff    = ((bearing - userHeading + 540) % 360) - 180;
+    document.getElementById('dbg-bearing').textContent = Math.round(bearing) + '°';
+    document.getElementById('dbg-diff').textContent    = Math.round(diff) + '°';
+    document.getElementById('dbg-dist').textContent    = Math.round(dist) + 'm';
 
     if (dist <= ARRIVE_THRESHOLD) {
       triggerArrived();
@@ -694,9 +727,9 @@ async function autoNavTick() {
   // ── Calculate required direction ──────────────────────
   const cmd = calcDirection();
   const now = Date.now();
+  document.getElementById('dbg-cmd').textContent = cmd;
 
-  // Send if direction changed OR repeat interval passed
-  const dirChanged  = cmd !== lastSentCmd;
+  const dirChanged   = cmd !== lastSentCmd;
   const timeToRepeat = (now - lastSentTime) >= REPEAT_INTERVAL;
 
   if (dirChanged || timeToRepeat) {
