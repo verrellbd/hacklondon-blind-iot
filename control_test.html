@@ -260,8 +260,23 @@ function triggerSOS() {
     sendWithLocation(c);
 
   } else if (c.type === 'sms') {
-    const body = buildMessage(c, null);
-    window.location.href = 'sms:' + c.phone + '?body=' + encodeURIComponent(body);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+          const body = buildMessage(c, url);
+          window.location.href = 'sms:' + c.phone + '?body=' + encodeURIComponent(body);
+        },
+        () => {
+          const body = buildMessage(c, null);
+          window.location.href = 'sms:' + c.phone + '?body=' + encodeURIComponent(body);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    } else {
+      const body = buildMessage(c, null);
+      window.location.href = 'sms:' + c.phone + '?body=' + encodeURIComponent(body);
+    }
   }
 
   // Reset panel after 10s
@@ -274,19 +289,19 @@ function sendWithLocation(c) {
       pos => {
         const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
         const msg = buildMessage(c, url);
-        window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
-        log('WhatsApp opened with location ✅', 'lc');
+        window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg);
+        log('Opening WhatsApp with location ✅', 'lc');
       },
       () => {
         const msg = buildMessage(c, null);
-        window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
-        log('WhatsApp opened (no location)', 'ly');
+        window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg);
+        log('Opening WhatsApp (no location)', 'ly');
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );
   } else {
     const msg = buildMessage(c, null);
-    window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
+    window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg);
   }
 }
 
