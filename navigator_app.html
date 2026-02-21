@@ -3,1136 +3,790 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>SmartStick Navigator</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<title>SmartStick Campus</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
 <style>
-  /* ── Reset & Base ─────────────────────────────── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080f;
+  --s1:#0d0e1a;
+  --s2:#13152a;
+  --s3:#1c1f38;
+  --border:#252840;
+  --accent:#4fffb0;
+  --accent2:#ff6b6b;
+  --accent3:#ffd93d;
+  --blue:#4d9fff;
+  --text:#e2e4f0;
+  --muted:#5a5d7a;
+  --r:14px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;position:relative}
 
-  :root {
-    --bg:        #0a0a0f;
-    --surface:   #13131a;
-    --card:      #1a1a24;
-    --border:    #2a2a38;
-    --accent:    #00e5ff;
-    --accent2:   #7c4dff;
-    --danger:    #ff3d5a;
-    --warn:      #ffab00;
-    --success:   #00e676;
-    --text:      #e8e8f0;
-    --muted:     #6b6b80;
-    --radius:    16px;
-  }
+/* TOPBAR */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--s1)}
+#topbar h1{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-0.3px;font-family:'IBM Plex Mono',monospace}
+#topbar h1 span{color:var(--muted);font-weight:400}
+#ble-btn{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);transition:all .2s}
+#ble-btn:hover{border-color:var(--accent);color:var(--accent)}
+#ble-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s}
+#ble-dot.connected{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+#ble-dot.connecting{background:var(--accent3);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    overflow: hidden;
-  }
+/* TABS */
+#tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--s1)}
+.tab{flex:1;padding:11px 0;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;border-bottom:2px solid transparent}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-  /* ── App Shell ────────────────────────────────── */
-  #app {
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    max-width: 480px;
-    margin: 0 auto;
-    position: relative;
-  }
+/* SCREENS */
+.screen{display:none;flex:1;flex-direction:column;overflow-y:auto}
+.screen.active{display:flex}
 
-  /* ── Top Bar ──────────────────────────────────── */
-  #topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  #topbar h1 {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-    color: var(--accent);
-  }
-  #ble-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    cursor: pointer;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 6px 12px;
-    transition: all 0.2s;
-  }
-  #ble-status:hover { border-color: var(--accent); color: var(--accent); }
-  #ble-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background 0.3s;
-  }
-  #ble-dot.connected    { background: var(--success); box-shadow: 0 0 8px var(--success); }
-  #ble-dot.connecting   { background: var(--warn);    animation: pulse 1s infinite; }
-  #ble-dot.disconnected { background: var(--danger); }
+/* ── NAVIGATE SCREEN ─────────────────────────── */
+#screen-nav{gap:0}
 
-  @keyframes pulse {
-    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
-  }
+/* GPS bar */
+#gps-bar{padding:10px 18px;background:var(--s2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#gps-text{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+#gps-text.ok{color:var(--accent)}
+#gps-text.err{color:var(--accent2)}
+#btn-retry-gps{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;text-decoration:underline}
 
-  /* ── Screens ──────────────────────────────────── */
-  .screen { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding: 16px 20px; }
-  .screen.active { display: flex; }
+/* Room grid */
+#room-grid-wrap{padding:16px 18px;flex-shrink:0}
+#room-grid-wrap h2{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:1px;margin-bottom:12px}
+#room-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.room-btn{
+  background:var(--s2);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px 14px;cursor:pointer;transition:all .2s;text-align:left;
+  display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden
+}
+.room-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+.room-btn:active{transform:scale(.97)}
+.room-btn.navigating{border-color:var(--accent);background:rgba(79,255,176,.07)}
+.room-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--blue));opacity:0;transition:opacity .2s}
+.room-btn:hover::before,.room-btn.navigating::before{opacity:1}
+.room-icon{font-size:22px}
+.room-name{font-size:14px;font-weight:700;color:var(--text)}
+.room-dist{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted)}
+.room-badge{position:absolute;top:8px;right:8px;background:var(--s3);border-radius:6px;padding:2px 6px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted)}
+.room-badge.has-loc{background:rgba(79,255,176,.15);color:var(--accent)}
+#no-rooms-msg{padding:40px 18px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+#no-rooms-msg span{display:block;font-size:28px;margin-bottom:12px}
 
-  /* ── Home Screen ──────────────────────────────── */
-  #screen-home { gap: 16px; }
+/* Nav active panel */
+#nav-active{display:none;flex-direction:column;flex:1}
+#nav-active.show{display:flex}
 
-  /* BLE connect card */
-  #ble-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    text-align: center;
-  }
-  #ble-card.connected { border-color: var(--success); }
-  #ble-card h2 { font-size: 15px; color: var(--muted); margin-bottom: 8px; }
-  #ble-device-name {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    color: var(--accent);
-    min-height: 18px;
-  }
-  #btn-ble-connect {
-    margin-top: 12px;
-    width: 100%;
-    padding: 14px;
-    background: var(--accent2);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-  }
-  #btn-ble-connect:active { transform: scale(0.97); }
-  #btn-ble-connect:disabled { opacity: 0.4; cursor: default; }
+#nav-dest-bar{padding:12px 18px;background:var(--s2);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+#nav-dest-name{font-size:13px;font-weight:700;color:var(--accent)}
+#btn-cancel-nav{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace}
+#btn-cancel-nav:hover{border-color:var(--accent2);color:var(--accent2)}
 
-  /* Search bar */
-  #search-section h2 { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
-  #search-wrap {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  #search-input {
-    flex: 1;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 16px;
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  #search-input:focus { border-color: var(--accent); }
-  #search-input::placeholder { color: var(--muted); }
+/* Big tap area */
+#tap-zone{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+  padding:20px;position:relative;overflow:hidden
+}
+#tap-zone::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at center,rgba(79,255,176,.04) 0%,transparent 70%);
+  pointer-events:none
+}
+#tap-zone:active{background:rgba(79,255,176,.04)}
+#tap-hint{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:2px}
+#nav-arrow{font-size:90px;line-height:1;filter:drop-shadow(0 0 20px rgba(79,255,176,.3));transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+#nav-arrow.pop{animation:pop .35s ease}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+#nav-dir-label{font-size:28px;font-weight:800;color:var(--accent);letter-spacing:-0.5px}
+#nav-beeps{font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--blue);letter-spacing:4px;min-height:26px}
 
-  #btn-voice {
-    width: 50px; height: 50px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    color: var(--text);
-    font-size: 22px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  #btn-voice.listening { background: var(--danger); border-color: var(--danger); animation: pulse 0.8s infinite; }
+/* Compass ring */
+#compass-wrap{padding:0 18px 10px;flex-shrink:0;display:flex;align-items:center;gap:12px}
+#compass-ring{width:48px;height:48px;position:relative;flex-shrink:0}
+#compass-ring svg{width:100%;height:100%}
+#compass-status{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.5}
+#compass-status .bearing{font-size:13px;color:var(--accent3);font-weight:700}
 
-  #search-results {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .place-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .place-card:active { transform: scale(0.98); background: var(--surface); }
-  .place-card:hover  { border-color: var(--accent); }
-  .place-icon { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
-  .place-info h3 { font-size: 15px; font-weight: 700; }
-  .place-info p  { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'Space Mono', monospace; }
+/* Step tracker */
+#step-bar{padding:8px 18px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border)}
+#step-counter{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+#step-dots{display:flex;gap:5px;flex:1}
+.step-dot{height:4px;flex:1;background:var(--s3);border-radius:2px;transition:background .3s}
+.step-dot.done{background:var(--accent)}
+.step-dot.current{background:var(--accent3)}
+#dist-remaining{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
 
-  /* Favorites */
-  #favorites-section h2 { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
-  #favorites-list { display: flex; flex-direction: column; gap: 8px; }
+/* ── MANAGE SCREEN ───────────────────────────── */
+#screen-manage{gap:0}
+#manage-header{padding:14px 18px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+#manage-header h2{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:.5px}
 
-  /* ── Navigation Screen ────────────────────────── */
-  #screen-nav {
-    gap: 0;
-    padding: 0;
-  }
+/* Add room form */
+#add-form{padding:16px 18px;background:var(--s2);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+#add-form h3{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:1px}
+.form-row{display:flex;gap:8px}
+.inp{flex:1;background:var(--s3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--muted)}
+.inp-icon{width:46px;background:var(--s3);border:1px solid var(--border);border-radius:10px;padding:11px 8px;color:var(--text);font-size:16px;outline:none;text-align:center}
+#btn-capture-gps{width:100%;padding:12px;background:rgba(79,255,176,.12);border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+#btn-capture-gps:hover{background:rgba(79,255,176,.2)}
+#btn-capture-gps:disabled{opacity:.4;cursor:default}
+#captured-coords{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);min-height:16px}
+#captured-coords.ok{color:var(--accent)}
+.btn-add{padding:12px;background:var(--accent);border:none;border-radius:10px;color:#07080f;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s}
+.btn-add:hover{filter:brightness(1.1)}
+.btn-add:disabled{opacity:.4;cursor:default}
 
-  #nav-header {
-    padding: 16px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  #nav-destination {
-    font-size: 13px;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-  }
-  #nav-destination span {
-    color: var(--accent);
-    font-weight: 700;
-  }
+/* Room list */
+#room-list{padding:12px 18px;display:flex;flex-direction:column;gap:8px}
+.manage-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px}
+.manage-card-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
+.manage-card-info{flex:1}
+.manage-card-info h3{font-size:14px;font-weight:700}
+.manage-card-info p{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:2px}
+.manage-card-info p.no-loc{color:var(--accent2)}
+.btn-del{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;transition:color .2s}
+.btn-del:hover{color:var(--accent2)}
 
-  /* Big direction display */
-  #nav-direction-box {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    gap: 16px;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #nav-direction-box:active { background: rgba(0,229,255,0.05); }
-  #nav-direction-box::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, rgba(0,229,255,0.05) 0%, transparent 70%);
-    pointer-events: none;
-  }
+/* Export/Import bar */
+#export-bar{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;margin-top:auto}
+.btn-io{flex:1;padding:11px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s}
+.btn-io:hover{border-color:var(--accent3);color:var(--accent3)}
 
-  #nav-arrow {
-    font-size: 100px;
-    line-height: 1;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    filter: drop-shadow(0 0 20px rgba(0,229,255,0.4));
-  }
-  #nav-arrow.flash { animation: arrowFlash 0.4s ease; }
-  @keyframes arrowFlash {
-    0%,100% { transform: scale(1); }
-    50%      { transform: scale(1.2); }
-  }
+/* ARRIVED overlay */
+#arrived-overlay{display:none;position:fixed;inset:0;background:rgba(7,8,15,.9);backdrop-filter:blur(6px);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#arrived-overlay.show{display:flex}
+#arrived-overlay .big{font-size:72px}
+#arrived-overlay h2{font-size:30px;font-weight:800;color:var(--accent)}
+#arrived-overlay p{color:var(--muted);font-size:13px;font-family:'IBM Plex Mono',monospace}
+#btn-dismiss{margin-top:8px;padding:14px 36px;background:var(--accent);color:#07080f;border:none;border-radius:12px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;cursor:pointer}
 
-  #nav-label {
-    font-size: 32px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: var(--accent);
-    text-align: center;
-  }
-
-  #nav-beep-pattern {
-    font-family: 'Space Mono', monospace;
-    font-size: 20px;
-    letter-spacing: 6px;
-    color: var(--accent2);
-    min-height: 28px;
-  }
-
-  #nav-distance-bar {
-    width: 100%;
-    padding: 0 24px;
-    flex-shrink: 0;
-  }
-  #nav-dist-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  #dist-track {
-    height: 6px;
-    background: var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  #dist-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent2), var(--accent));
-    border-radius: 3px;
-    width: 0%;
-    transition: width 1s ease;
-  }
-
-  #nav-obstacle-bar {
-    padding: 10px 20px;
-    flex-shrink: 0;
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-    min-height: 36px;
-  }
-  #nav-obstacle-bar.danger  { color: var(--danger); }
-  #nav-obstacle-bar.warning { color: var(--warn); }
-
-  #nav-controls {
-    display: flex;
-    gap: 10px;
-    padding: 12px 20px 20px;
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-  }
-
-  #btn-stop-nav {
-    flex: 1;
-    padding: 16px;
-    background: transparent;
-    border: 2px solid var(--danger);
-    color: var(--danger);
-    border-radius: 12px;
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  #btn-stop-nav:hover { background: var(--danger); color: #fff; }
-
-  #btn-sos {
-    width: 56px;
-    height: 56px;
-    background: var(--danger);
-    border: none;
-    border-radius: 12px;
-    color: #fff;
-    font-size: 22px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.1s;
-    flex-shrink: 0;
-  }
-  #btn-sos:active { transform: scale(0.93); }
-
-  /* ── Step list (turn-by-turn) ─────────────────── */
-  #step-list-wrap {
-    padding: 0 20px 12px;
-    flex-shrink: 0;
-    max-height: 120px;
-    overflow-y: auto;
-  }
-  #step-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-  .step-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    background: var(--card);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    font-size: 13px;
-    transition: all 0.3s;
-  }
-  .step-item.active-step {
-    border-color: var(--accent);
-    background: rgba(0,229,255,0.08);
-    color: var(--accent);
-    font-weight: 700;
-  }
-  .step-item.done-step {
-    opacity: 0.35;
-    text-decoration: line-through;
-  }
-  .step-arrow { font-size: 16px; flex-shrink: 0; }
-  .step-text  { font-size: 12px; font-family: 'Space Mono', monospace; }
-  .step-dist  { margin-left: auto; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
-
-  /* ── Toast ────────────────────────────────────── */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 20px;
-    font-size: 14px;
-    font-family: 'Space Mono', monospace;
-    white-space: nowrap;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 999;
-    max-width: 90vw;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-  #toast.error   { border-color: var(--danger);  color: var(--danger); }
-  #toast.success { border-color: var(--success); color: var(--success); }
-  #toast.info    { border-color: var(--accent);  color: var(--accent); }
-  #toast.warn    { border-color: var(--warn);    color: var(--warn); }
-
-  /* ── Arrived overlay ──────────────────────────── */
-  #arrived-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,230,118,0.12);
-    backdrop-filter: blur(4px);
-    z-index: 200;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-  }
-  #arrived-overlay.show { display: flex; }
-  #arrived-overlay .big-emoji { font-size: 80px; }
-  #arrived-overlay h2 { font-size: 36px; font-weight: 800; color: var(--success); }
-  #arrived-overlay p  { color: var(--muted); font-size: 14px; }
-  #btn-dismiss-arrived {
-    margin-top: 8px;
-    padding: 14px 32px;
-    background: var(--success);
-    color: #000;
-    border: none;
-    border-radius: 12px;
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* Toast */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:11px 18px;font-size:13px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:90vw}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--accent);color:var(--accent)}
+#toast.err{border-color:var(--accent2);color:var(--accent2)}
+#toast.warn{border-color:var(--accent3);color:var(--accent3)}
+#toast.info{border-color:var(--blue);color:var(--blue)}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 </style>
 </head>
 <body>
-
 <div id="app">
 
-  <!-- ── Top Bar ─────────────────────────────────── -->
+  <!-- TOPBAR -->
   <div id="topbar">
-    <h1>🦯 SmartStick</h1>
-    <div id="ble-status" onclick="toggleBLE()" title="Click to connect/disconnect BLE">
+    <h1>SmartStick <span>/ Campus</span></h1>
+    <div id="ble-btn" onclick="connectBLE()">
       <div id="ble-dot"></div>
-      <span id="ble-label">Not connected</span>
+      <span id="ble-label">BLE</span>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       SCREEN: HOME
-  ════════════════════════════════════════════════ -->
-  <div id="screen-home" class="screen active">
+  <!-- TABS -->
+  <div id="tabs">
+    <div class="tab active" onclick="switchTab('nav')" id="tab-nav">NAVIGATE</div>
+    <div class="tab" onclick="switchTab('manage')" id="tab-manage">MANAGE ROOMS</div>
+  </div>
 
-    <!-- BLE Connect Card -->
-    <div id="ble-card">
-      <h2>Stick Connection</h2>
-      <div id="ble-device-name">—</div>
-      <button id="btn-ble-connect" onclick="connectBLE()">📡 Connect SmartStick</button>
+  <!-- ═══════════ NAVIGATE SCREEN ═══════════ -->
+  <div id="screen-nav" class="screen active">
+
+    <!-- GPS Bar -->
+    <div id="gps-bar">
+      <span id="gps-text">📍 Getting GPS...</span>
+      <button id="btn-retry-gps" onclick="startGPS()">Retry</button>
     </div>
 
-    <!-- GPS Status + Manual Fallback -->
-    <div id="gps-card" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
-      <div id="gps-status" style="font-size:13px;font-family:'Space Mono',monospace;color:var(--muted);">📍 Getting GPS location...</div>
-      <div id="manual-location-wrap" style="display:none;margin-top:12px;gap:8px;flex-direction:column;">
-        <div style="font-size:12px;color:var(--muted);">Enter your current location (street, area, or city):</div>
-        <div style="display:flex;gap:8px;">
-          <input id="manual-location-input" type="text" placeholder="e.g. Jalan Ampang, Kuala Lumpur"
-            style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;
-                   padding:10px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;outline:none;"
-            onkeydown="if(event.key==='Enter') resolveManualLocation()"/>
-          <button id="btn-set-location" onclick="resolveManualLocation()"
-            style="padding:10px 16px;background:var(--accent2);color:#fff;border:none;border-radius:10px;
-                   font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">
-            Set
-          </button>
+    <!-- Room Grid -->
+    <div id="room-grid-wrap">
+      <h2>SELECT DESTINATION</h2>
+      <div id="room-grid"></div>
+      <div id="no-rooms-msg" style="display:none">
+        <span>🗺️</span>
+        No rooms added yet.<br>Go to <b>Manage Rooms</b> tab<br>to add your campus locations.
+      </div>
+    </div>
+
+    <!-- Active Navigation Panel (hidden until nav starts) -->
+    <div id="nav-active">
+      <div id="nav-dest-bar">
+        <span id="nav-dest-name">—</span>
+        <button id="btn-cancel-nav" onclick="cancelNav()">✕ Cancel</button>
+      </div>
+
+      <!-- BIG TAP ZONE -->
+      <div id="tap-zone" onclick="advanceStep()">
+        <div id="tap-hint">TAP TO ADVANCE STEP</div>
+        <div id="nav-arrow">⬆️</div>
+        <div id="nav-dir-label">Starting...</div>
+        <div id="nav-beeps"></div>
+      </div>
+
+      <!-- Compass -->
+      <div id="compass-wrap">
+        <div id="compass-ring">
+          <svg viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="22" fill="none" stroke="#252840" stroke-width="2"/>
+            <circle cx="24" cy="24" r="22" fill="none" stroke="#4fffb0" stroke-width="2"
+              stroke-dasharray="138" stroke-dashoffset="138" id="compass-arc" style="transition:stroke-dashoffset .5s;transform-origin:center;transform:rotate(-90deg)"/>
+            <polygon id="compass-needle" points="24,6 27,24 24,28 21,24"
+              fill="#ffd93d" style="transform-origin:center;transition:transform .4s ease"/>
+            <circle cx="24" cy="24" r="3" fill="#252840"/>
+          </svg>
+        </div>
+        <div id="compass-status">
+          <div>Compass: <span id="compass-heading">—°</span></div>
+          <div>Target: <span class="bearing" id="target-bearing">—°</span></div>
+          <div id="compass-hint" style="color:var(--accent3)">—</div>
         </div>
       </div>
-    </div>
 
-    <!-- Search -->
-    <div id="search-section">
-      <h2>🔍 Search Destination</h2>
-      <div id="search-wrap">
-        <input id="search-input" type="text" placeholder="e.g. Hospital, School, Park..."
-               oninput="onSearchInput()" onkeydown="if(event.key==='Enter')doSearch()"/>
-        <button id="btn-voice" onclick="startVoice()" title="Voice search">🎤</button>
+      <!-- Step bar -->
+      <div id="step-bar">
+        <span id="step-counter">Step 0/0</span>
+        <div id="step-dots"></div>
+        <span id="dist-remaining">—m</span>
       </div>
-      <div id="search-results"></div>
-    </div>
-
-    <!-- Favorites -->
-    <div id="favorites-section">
-      <h2>⭐ Saved Places</h2>
-      <div id="favorites-list"></div>
-    </div>
-
-  </div><!-- /screen-home -->
-
-  <!-- ═══════════════════════════════════════════════
-       SCREEN: NAVIGATION
-  ════════════════════════════════════════════════ -->
-  <div id="screen-nav" class="screen">
-
-    <div id="nav-header">
-      <div id="nav-destination">Navigating to: <span id="nav-dest-label">—</span></div>
-    </div>
-
-    <!-- Big direction arrow — TAP TO ADVANCE -->
-    <div id="nav-direction-box" onclick="advanceStep()" title="Tap to go to next step">
-
-      <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;">
-        TAP ANYWHERE TO ADVANCE →
-      </div>
-      <div id="nav-arrow">⬆️</div>
-      <div id="nav-label">Calculating...</div>
-      <div id="nav-beep-pattern"></div>
-    </div>
-
-    <!-- Distance progress -->
-    <div id="nav-distance-bar">
-      <div id="nav-dist-label">Distance: — m remaining</div>
-      <div id="dist-track"><div id="dist-fill"></div></div>
-    </div>
-
-    <!-- Obstacle status bar -->
-    <div id="nav-obstacle-bar">No obstacles detected</div>
-
-    <!-- Step list -->
-    <div id="step-list-wrap">
-      <ul id="step-list"></ul>
-    </div>
-
-    <!-- Controls -->
-    <div id="nav-controls">
-      <button id="btn-stop-nav" onclick="stopNavigation()">✕ Stop Navigation</button>
-      <button id="btn-sos" onclick="triggerSOS()" title="Emergency SOS">🆘</button>
     </div>
 
   </div><!-- /screen-nav -->
+
+  <!-- ═══════════ MANAGE SCREEN ═══════════ -->
+  <div id="screen-manage" class="screen">
+
+    <div id="manage-header">
+      <h2>CAMPUS ROOMS</h2>
+    </div>
+
+    <!-- Add Room Form -->
+    <div id="add-form">
+      <h3>+ ADD ROOM</h3>
+      <div class="form-row">
+        <input class="inp-icon" id="inp-icon" type="text" value="🚪" maxlength="2"/>
+        <input class="inp" id="inp-name" type="text" placeholder="Room name (e.g. UCL 1)"/>
+      </div>
+      <button id="btn-capture-gps" onclick="captureGPS()">📍 Stand at room door → Capture GPS</button>
+      <div id="captured-coords">No location captured yet</div>
+      <div class="form-row">
+        <button class="btn-add" onclick="addRoom()" style="flex:1">Add Room</button>
+      </div>
+    </div>
+
+    <!-- Room List -->
+    <div id="room-list"></div>
+
+    <!-- Export / Import -->
+    <div id="export-bar">
+      <button class="btn-io" onclick="exportMap()">⬆ Export Map</button>
+      <button class="btn-io" onclick="importMap()">⬇ Import Map</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)"/>
+    </div>
+
+  </div><!-- /screen-manage -->
 
 </div><!-- /app -->
 
 <!-- Arrived Overlay -->
 <div id="arrived-overlay">
-  <div class="big-emoji">🎯</div>
+  <div class="big">🎯</div>
   <h2>Arrived!</h2>
-  <p id="arrived-place-name">You have reached your destination.</p>
-  <button id="btn-dismiss-arrived" onclick="dismissArrived()">Done</button>
+  <p id="arrived-room-name">You reached your destination.</p>
+  <button id="btn-dismiss" onclick="dismissArrived()">Done</button>
 </div>
 
 <!-- Toast -->
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-//  SmartStick Navigator — Main App Script
-//  
-//  BLE UUIDs must match the ESP32 sketch exactly!
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  SmartStick Campus Navigator
+//  Custom indoor map — walk & tap to record rooms
+//  Compass-assisted + tap-to-advance navigation
+// ══════════════════════════════════════════════════════════
 
 const BLE_SERVICE_UUID     = '12345678-1234-1234-1234-123456789abc';
 const BLE_CMD_CHAR_UUID    = '12345678-1234-1234-1234-123456789ab1';
 const BLE_NOTIFY_CHAR_UUID = '12345678-1234-1234-1234-123456789ab2';
 
-// ── State ─────────────────────────────────────────────────────
-let bleDevice      = null;
-let bleServer      = null;
-let cmdChar        = null;
-let notifyChar     = null;
-let bleConnected   = false;
+// ── State ─────────────────────────────────────────────────
+let bleDevice = null, cmdChar = null, notifyChar = null;
+let bleConnected = false;
+let userLat = null, userLng = null, userHeading = null;
+let capturedLat = null, capturedLng = null;
+let rooms = [];          // [{id, name, icon, lat, lng}]
+let navSteps = [];       // [{cmd, label}]
+let currentStep = 0;
+let destRoom = null;
+let watchId = null;
 
-let userLat = null, userLng = null;
-let destLat = null, destLng = null;
-let destName = '';
-
-let navSteps       = [];
-let currentStep    = 0;
-let totalDist      = 0;
-let navInterval    = null;
-let watchId        = null;
-let lastObstDist   = null;
-
-// ── Favorites (saved locally) ─────────────────────────────────
-const DEFAULT_FAVORITES = [
-  { name: 'Home',     icon: '🏠', address: null },
-  { name: 'Hospital', icon: '🏥', address: null },
-  { name: 'School',   icon: '🏫', address: null },
-  { name: 'Mosque',   icon: '🕌', address: null },
-  { name: 'Market',   icon: '🏪', address: null },
-  { name: 'Park',     icon: '🌳', address: null },
-];
-
-// ── Beep patterns (visual representation) ────────────────────
-const PATTERNS = {
-  R: { label: 'TURN RIGHT', arrow: '➡️',  beeps: '♪',         cmd: 'R' },
-  L: { label: 'TURN LEFT',  arrow: '⬅️',  beeps: '♪ ♪',       cmd: 'L' },
-  S: { label: 'STRAIGHT',   arrow: '⬆️',  beeps: '♪ ♪ ♪',     cmd: 'S' },
-  U: { label: 'U-TURN',     arrow: '🔄',  beeps: '♪ ♪ ♪ ♪',   cmd: 'U' },
-  A: { label: 'ARRIVED!',   arrow: '🎯',  beeps: '♪♪♪♪♪',     cmd: 'A' },
-  X: { label: 'STOPPED',    arrow: '⏹️',  beeps: '♪———',       cmd: 'X' },
+// ── Navigation step definitions ──────────────────────────
+const DIR = {
+  R: { label:'TURN RIGHT', arrow:'➡️',  beeps:'♪',       cmd:'R' },
+  L: { label:'TURN LEFT',  arrow:'⬅️',  beeps:'♪ ♪',     cmd:'L' },
+  S: { label:'GO STRAIGHT',arrow:'⬆️',  beeps:'♪ ♪ ♪',   cmd:'S' },
+  U: { label:'U-TURN',     arrow:'🔄',  beeps:'♪ ♪ ♪ ♪', cmd:'U' },
+  A: { label:'ARRIVED!',   arrow:'🎯',  beeps:'♪♪♪♪♪',   cmd:'A' },
 };
 
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  INIT
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  renderFavorites();
-  requestLocation();
-
-  if (!navigator.bluetooth) {
-    toast('Web Bluetooth not supported. Use Android Chrome.', 'error', 5000);
-    document.getElementById('btn-ble-connect').disabled = true;
-  }
+  loadRooms();
+  startGPS();
+  startCompass();
+  if (!navigator.bluetooth) toast('Web Bluetooth not supported. Use Android Chrome.', 'err', 5000);
 });
 
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  BLE
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 async function connectBLE() {
   if (bleConnected) { disconnectBLE(); return; }
-  setBLEStatus('connecting');
-  toast('Scanning for SmartStick...', 'info');
+  setBleDot('connecting'); toast('Scanning for SmartStick...', 'info');
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
       filters: [{ name: 'SmartStick' }],
       optionalServices: [BLE_SERVICE_UUID]
     });
-    bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnect);
-
-    bleServer = await bleDevice.gatt.connect();
-    const svc  = await bleServer.getPrimaryService(BLE_SERVICE_UUID);
-    cmdChar    = await svc.getCharacteristic(BLE_CMD_CHAR_UUID);
-    notifyChar = await svc.getCharacteristic(BLE_NOTIFY_CHAR_UUID);
-
-    // Listen for notifications from ESP32
+    bleDevice.addEventListener('gattserverdisconnected', onBleDisconnect);
+    const server = await bleDevice.gatt.connect();
+    const svc    = await server.getPrimaryService(BLE_SERVICE_UUID);
+    cmdChar      = await svc.getCharacteristic(BLE_CMD_CHAR_UUID);
+    notifyChar   = await svc.getCharacteristic(BLE_NOTIFY_CHAR_UUID);
     await notifyChar.startNotifications();
-    notifyChar.addEventListener('characteristicvaluechanged', onBLENotify);
-
+    notifyChar.addEventListener('characteristicvaluechanged', e => {
+      const v = new TextDecoder().decode(e.target.value).trim();
+      if (v === 'SOS') toast('⚠️ SOS on stick!', 'err', 5000);
+    });
     bleConnected = true;
-    setBLEStatus('connected', bleDevice.name || 'SmartStick');
-    document.getElementById('ble-card').classList.add('connected');
-    document.getElementById('btn-ble-connect').textContent = '✓ Connected — Tap to disconnect';
-    toast('SmartStick connected!', 'success');
-  } catch (e) {
-    setBLEStatus('disconnected');
-    toast('BLE connection failed: ' + e.message, 'error');
-    console.error(e);
+    setBleDot('connected');
+    toast('SmartStick connected!', 'ok');
+  } catch(e) {
+    setBleDot('off');
+    toast('BLE failed: ' + e.message, 'err');
   }
 }
-
-function toggleBLE() {
-  if (bleConnected) disconnectBLE(); else connectBLE();
+function onBleDisconnect() {
+  bleConnected = false; cmdChar = null; notifyChar = null;
+  setBleDot('off'); toast('Disconnected', 'warn');
 }
-
 function disconnectBLE() {
-  if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
-  onBLEDisconnect();
+  if (bleDevice?.gatt.connected) bleDevice.gatt.disconnect();
+  onBleDisconnect();
+}
+function setBleDot(s) {
+  const d = document.getElementById('ble-dot');
+  const l = document.getElementById('ble-label');
+  d.className = s === 'connected' ? 'connected' : s === 'connecting' ? 'connecting' : '';
+  l.textContent = s === 'connected' ? 'Connected' : s === 'connecting' ? 'Connecting' : 'BLE';
+}
+async function sendCmd(cmd) {
+  if (!bleConnected || !cmdChar) return;
+  try { await cmdChar.writeValueWithoutResponse(new TextEncoder().encode(cmd)); }
+  catch(e) { console.warn('BLE send error:', e); }
 }
 
-function onBLEDisconnect() {
-  bleConnected = false;
-  cmdChar = null; notifyChar = null;
-  setBLEStatus('disconnected');
-  document.getElementById('ble-card').classList.remove('connected');
-  document.getElementById('btn-ble-connect').textContent = '📡 Connect SmartStick';
-  document.getElementById('ble-device-name').textContent = '—';
-  toast('SmartStick disconnected', 'warn');
-}
-
-function onBLENotify(evt) {
-  const val = new TextDecoder().decode(evt.target.value).trim();
-  console.log('[BLE notify]', val);
-
-  if (val === 'SOS') {
-    toast('⚠️ SOS triggered on stick!', 'error', 5000);
-  } else if (val.startsWith('DIST:')) {
-    const cm = parseInt(val.split(':')[1]);
-    lastObstDist = cm;
-    updateObstacleBar(cm);
-  } else if (val === 'READY') {
-    toast('SmartStick is ready!', 'success');
-  }
-}
-
-async function sendBLECommand(cmd) {
-  if (!bleConnected || !cmdChar) {
-    toast('SmartStick not connected!', 'error');
-    return false;
-  }
-  try {
-    const enc = new TextEncoder().encode(cmd);
-    await cmdChar.writeValueWithoutResponse(enc);
-    console.log('[BLE send]', cmd);
-    return true;
-  } catch (e) {
-    toast('BLE send error: ' + e.message, 'error');
-    console.error(e);
-    return false;
-  }
-}
-
-function setBLEStatus(state, name = '') {
-  const dot   = document.getElementById('ble-dot');
-  const label = document.getElementById('ble-label');
-  const nameEl = document.getElementById('ble-device-name');
-  dot.className = state;
-  label.textContent = state === 'connected' ? name : state === 'connecting' ? 'Connecting...' : 'Not connected';
-  if (name) nameEl.textContent = name;
-}
-
-// ══════════════════════════════════════════════════════════════
-//  LOCATION
-// ══════════════════════════════════════════════════════════════
-function requestLocation() {
-  if (!navigator.geolocation) {
-    showManualLocationInput('GPS not supported on this browser.');
-    return;
-  }
+// ══════════════════════════════════════════════════════════
+//  GPS
+// ══════════════════════════════════════════════════════════
+function startGPS() {
+  const el = document.getElementById('gps-text');
+  el.textContent = '📍 Getting GPS...';
+  el.className = '';
+  if (!navigator.geolocation) { el.textContent = '❌ GPS not supported'; el.className = 'err'; return; }
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLat = pos.coords.latitude;
       userLng = pos.coords.longitude;
-      document.getElementById('gps-status').textContent = '📍 GPS ready';
-      document.getElementById('gps-status').style.color = 'var(--success)';
-      document.getElementById('manual-location-wrap').style.display = 'none';
+      el.textContent = `📍 GPS OK  (±${Math.round(pos.coords.accuracy)}m)`;
+      el.className = 'ok';
+      refreshRoomGrid(); // update distances once we have location
     },
     err => {
-      console.warn('GPS error:', err.message);
-      showManualLocationInput('GPS denied — enter your location manually to get accurate results.');
+      el.textContent = '⚠️ GPS denied — distances unavailable';
+      el.className = 'err';
+      refreshRoomGrid();
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 12000 }
   );
-}
-
-function showManualLocationInput(reason) {
-  document.getElementById('gps-status').textContent = '⚠️ ' + reason;
-  document.getElementById('gps-status').style.color = 'var(--warn)';
-  document.getElementById('manual-location-wrap').style.display = 'flex';
-}
-
-async function resolveManualLocation() {
-  const val = document.getElementById('manual-location-input').value.trim();
-  if (!val) return;
-  const btn = document.getElementById('btn-set-location');
-  btn.textContent = 'Searching...';
-  btn.disabled = true;
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=1`;
-    const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    const data = await resp.json();
-    if (!data.length) throw new Error('Location not found');
-    userLat = parseFloat(data[0].lat);
-    userLng = parseFloat(data[0].lon);
-    document.getElementById('gps-status').textContent = '📍 Location set: ' + data[0].display_name.split(',')[0];
-    document.getElementById('gps-status').style.color = 'var(--success)';
-    document.getElementById('manual-location-wrap').style.display = 'none';
-    toast('Location set! Now search your destination.', 'success');
-  } catch(e) {
-    toast('Could not find that location. Try being more specific.', 'error');
-  } finally {
-    btn.textContent = 'Set';
-    btn.disabled = false;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-//  SEARCH
-// ══════════════════════════════════════════════════════════════
-let searchTimer = null;
-function onSearchInput() {
-  clearTimeout(searchTimer);
-  const q = document.getElementById('search-input').value.trim();
-  if (q.length < 2) { document.getElementById('search-results').innerHTML = ''; return; }
-  searchTimer = setTimeout(() => doSearch(), 600);
-}
-
-async function doSearch() {
-  const q = document.getElementById('search-input').value.trim();
-  if (!q) return;
-
-  const resultsEl = document.getElementById('search-results');
-  resultsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Searching...</div>';
-
-  try {
-    // Use Nominatim (OpenStreetMap) — free, no API key needed
-    let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`;
-    if (userLat && userLng) {
-      url += `&viewbox=${userLng-0.1},${userLat+0.1},${userLng+0.1},${userLat-0.1}&bounded=0`;
-    }
-
-    const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    const data = await resp.json();
-
-    if (!data.length) {
-      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">No results found. Try a different search.</div>';
-      return;
-    }
-
-    resultsEl.innerHTML = '';
-    data.forEach(place => {
-      const icon = getPlaceIcon(place.type, place.class);
-      const name = place.display_name.split(',').slice(0, 2).join(', ');
-      const dist = userLat ? getDistKm(userLat, userLng, parseFloat(place.lat), parseFloat(place.lon)) : null;
-      const card = document.createElement('div');
-      card.className = 'place-card';
-      card.innerHTML = `
-        <div class="place-icon">${icon}</div>
-        <div class="place-info">
-          <h3>${name.split(',')[0]}</h3>
-          <p>${name.split(',').slice(1).join(',').trim() || place.type}${dist ? ' · ' + dist : ''}</p>
-        </div>
-      `;
-      card.onclick = () => selectDestination(parseFloat(place.lat), parseFloat(place.lon), place.display_name.split(',')[0]);
-      resultsEl.appendChild(card);
-    });
-  } catch (e) {
-    resultsEl.innerHTML = '<div style="color:var(--danger);font-size:13px;padding:8px">Search failed. Check internet connection.</div>';
-  }
-}
-
-function getPlaceIcon(type, cls) {
-  const map = {
-    hospital: '🏥', clinic: '🏥', pharmacy: '💊', school: '🏫',
-    university: '🎓', mosque: '🕌', church: '⛪', park: '🌳',
-    restaurant: '🍽️', cafe: '☕', supermarket: '🏪', market: '🏬',
-    station: '🚉', bus_stop: '🚌', hotel: '🏨', bank: '🏦',
-    atm: '💳', police: '👮', fire_station: '🚒', airport: '✈️',
-  };
-  return map[type] || map[cls] || '📍';
-}
-
-function getDistKm(lat1, lng1, lat2, lng2) {
-  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return d < 1 ? Math.round(d*1000) + 'm' : d.toFixed(1) + 'km';
-}
-
-// ══════════════════════════════════════════════════════════════
-//  FAVORITES
-// ══════════════════════════════════════════════════════════════
-function renderFavorites() {
-  const list = document.getElementById('favorites-list');
-  const saved = JSON.parse(localStorage.getItem('smartstick_favs') || 'null') || DEFAULT_FAVORITES;
-  list.innerHTML = '';
-  saved.forEach((fav, i) => {
-    const card = document.createElement('div');
-    card.className = 'place-card';
-    card.innerHTML = `
-      <div class="place-icon">${fav.icon}</div>
-      <div class="place-info">
-        <h3>${fav.name}</h3>
-        <p>${fav.address ? fav.address.split(',').slice(0,2).join(',') : 'Tap to set location'}</p>
-      </div>
-    `;
-    card.onclick = () => {
-      if (fav.lat && fav.lng) {
-        selectDestination(fav.lat, fav.lng, fav.name);
-      } else {
-        toast('Search for ' + fav.name + ' to save it', 'info');
-        document.getElementById('search-input').value = fav.name;
-        doSearch();
-      }
-    };
-    list.appendChild(card);
-  });
-}
-
-// ══════════════════════════════════════════════════════════════
-//  VOICE SEARCH
-// ══════════════════════════════════════════════════════════════
-function startVoice() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) { toast('Voice search not supported', 'error'); return; }
-  const rec = new SpeechRecognition();
-  rec.lang = 'en-US'; rec.interimResults = false;
-  const btn = document.getElementById('btn-voice');
-  btn.classList.add('listening');
-  rec.onresult = e => {
-    const text = e.results[0][0].transcript;
-    document.getElementById('search-input').value = text;
-    doSearch();
-  };
-  rec.onend = () => btn.classList.remove('listening');
-  rec.onerror = () => { btn.classList.remove('listening'); toast('Voice error', 'error'); };
-  rec.start();
-}
-
-// ══════════════════════════════════════════════════════════════
-//  NAVIGATION
-// ══════════════════════════════════════════════════════════════
-async function selectDestination(lat, lng, name) {
-  if (!bleConnected) {
-    toast('Connect SmartStick first!', 'warn', 3000);
-    return;
-  }
-
-  // If we still don't have user location, try once more then ask manually
-  if (!userLat) {
-    toast('Getting your location...', 'info');
-    await new Promise(res => {
-      navigator.geolocation.getCurrentPosition(
-        pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; res(); },
-        () => res(), // continue even if denied — will show error below
-        { enableHighAccuracy: true, timeout: 6000 }
-      );
-    });
-  }
-
-  // Still no location — can't navigate without starting point
-  if (!userLat) {
-    toast('Cannot navigate — your location is unknown. Enter it manually above.', 'error', 5000);
-    showManualLocationInput('Enter your current location to start navigation.');
-    return;
-  }
-
-  destLat = lat; destLng = lng; destName = name;
-  document.getElementById('nav-dest-label').textContent = name;
-  document.getElementById('nav-label').textContent = 'Calculating...';
-  document.getElementById('nav-arrow').textContent = '⏳';
-
-  showScreen('screen-nav');
-  toast('Navigation started!', 'success');
-
-  // Fetch walking route from OSRM (free, no API key)
-  await fetchRoute(userLat, userLng, destLat, destLng);
-
-  // Start watching position
+  // Also watch for live updates during nav
+  if (watchId) navigator.geolocation.clearWatch(watchId);
   watchId = navigator.geolocation.watchPosition(
-    pos => onPositionUpdate(pos.coords.latitude, pos.coords.longitude),
-    err => console.warn('GPS error:', err),
-    { enableHighAccuracy: true, maximumAge: 2000 }
+    pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; updateDistRemaining(); },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 3000 }
   );
 }
 
-async function fetchRoute(fromLat, fromLng, toLat, toLng) {
-  try {
-    const url = `https://router.project-osrm.org/route/v1/foot/${fromLng},${fromLat};${toLng},${toLat}?steps=true&geometries=geojson&overview=full`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (data.code !== 'Ok') throw new Error('Route not found');
-
-    const route = data.routes[0];
-    totalDist   = route.distance; // metres
-    navSteps    = [];
-    currentStep = 0;
-
-    route.legs[0].steps.forEach(step => {
-      if (step.maneuver.type === 'arrive') {
-        navSteps.push({ type: 'A', text: 'Arrived at destination', dist: 0,
-          lat: step.maneuver.location[1], lng: step.maneuver.location[0] });
-      } else {
-        const dir = maneuverToCmd(step.maneuver.type, step.maneuver.modifier);
-        navSteps.push({
-          type: dir,
-          text: step.name || step.maneuver.type,
-          dist: Math.round(step.distance),
-          lat:  step.maneuver.location[1],
-          lng:  step.maneuver.location[0]
-        });
-      }
-    });
-
-    renderStepList();
-    updateNavDisplay(navSteps[0]);
-    await sendNavCommand(navSteps[0].type);
-
-  } catch (e) {
-    console.error('Route error:', e);
-    toast('Could not get route. Check internet.', 'error');
-    // Fallback: calculate bearing-based direction only
-    useBearingNavigation();
+// ══════════════════════════════════════════════════════════
+//  COMPASS
+// ══════════════════════════════════════════════════════════
+function startCompass() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+ requires permission
+    DeviceOrientationEvent.requestPermission().then(s => {
+      if (s === 'granted') window.addEventListener('deviceorientation', onOrientation, true);
+    }).catch(() => {});
+  } else {
+    window.addEventListener('deviceorientation', onOrientation, true);
   }
 }
 
-function maneuverToCmd(type, modifier) {
-  if (type === 'turn') {
-    if (modifier === 'right' || modifier === 'sharp right') return 'R';
-    if (modifier === 'left'  || modifier === 'sharp left')  return 'L';
-    if (modifier === 'uturn')                               return 'U';
-    return 'S';
-  }
-  if (type === 'continue' || type === 'new name') return 'S';
-  if (type === 'roundabout') {
-    if (modifier === 'right') return 'R';
-    if (modifier === 'left')  return 'L';
-    return 'S';
-  }
-  return 'S';
+function onOrientation(e) {
+  let heading = e.webkitCompassHeading || (e.alpha != null ? 360 - e.alpha : null);
+  if (heading == null) return;
+  userHeading = Math.round(heading);
+  document.getElementById('compass-heading').textContent = userHeading + '°';
+  // Rotate needle
+  document.getElementById('compass-needle').style.transform = `rotate(${userHeading}deg)`;
+  // Update hint if navigating
+  if (destRoom && navSteps.length) updateCompassHint();
 }
 
-// Fallback navigation if no internet: just use compass bearing
-function useBearingNavigation() {
-  toast('Using bearing navigation (offline)', 'warn');
-  navSteps = [{ type: 'S', text: 'Head toward destination', dist: Math.round(haversine(userLat,userLng,destLat,destLng)), lat: destLat, lng: destLng }];
-  currentStep = 0;
-  renderStepList();
-  updateNavDisplay(navSteps[0]);
-  sendNavCommand('S');
+function updateCompassHint() {
+  if (!userLat || !destRoom) return;
+  const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
+  document.getElementById('target-bearing').textContent = Math.round(bearing) + '°';
+  // Arc shows progress toward target bearing
+  const arc = document.getElementById('compass-arc');
+  const pct = Math.abs(((bearing - userHeading + 540) % 360) - 180) / 180;
+  arc.style.strokeDashoffset = 138 - (138 * (1 - pct));
+
+  if (userHeading != null) {
+    const diff = ((bearing - userHeading + 540) % 360) - 180;
+    let hint = '';
+    if (Math.abs(diff) < 20)      hint = '✅ Facing destination';
+    else if (diff > 0)            hint = `↻ Turn right ${Math.round(diff)}°`;
+    else                          hint = `↺ Turn left ${Math.round(-diff)}°`;
+    document.getElementById('compass-hint').textContent = hint;
+  }
 }
 
-function onPositionUpdate(lat, lng) {
-  userLat = lat; userLng = lng;
-  if (!navSteps.length) return;
-
-  const distToDest = haversine(lat, lng, destLat, destLng);
-
-  // GPS only used to update distance display — NOT for step advancing
-  const progress = Math.max(0, Math.min(100, ((totalDist - distToDest) / totalDist) * 100));
-  document.getElementById('dist-fill').style.width = progress + '%';
-  document.getElementById('nav-dist-label').textContent = `Distance: ${Math.round(distToDest)}m remaining`;
-}
-
-// ── Tap to advance to next step ───────────────────────────────
-async function advanceStep() {
-  if (!navSteps.length) return;
-
-  // If on last step (arrived) — trigger arrived
-  if (currentStep >= navSteps.length - 1) {
-    triggerArrived();
-    return;
-  }
-
-  currentStep++;
-  const next = navSteps[currentStep];
-  updateNavDisplay(next);
-  await sendNavCommand(next.type);
-  renderStepList();
-
-  // If this new step is arrived
-  if (next.type === 'A') {
-    setTimeout(() => triggerArrived(), 2000);
-  }
+function getBearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
-  const dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-async function sendNavCommand(cmd) {
-  if (!bleConnected) return;
-  const ok = await sendBLECommand(cmd);
-  if (ok) console.log('[NAV] Sent command:', cmd);
+// ══════════════════════════════════════════════════════════
+//  ROOMS — STORAGE
+// ══════════════════════════════════════════════════════════
+function loadRooms() {
+  try { rooms = JSON.parse(localStorage.getItem('campus_rooms') || '[]'); }
+  catch { rooms = []; }
+  refreshRoomGrid();
+  refreshRoomList();
 }
 
-function updateNavDisplay(step) {
-  const p = PATTERNS[step.type] || PATTERNS.S;
-  const arrowEl = document.getElementById('nav-arrow');
-  const labelEl = document.getElementById('nav-label');
-  const beepEl  = document.getElementById('nav-beep-pattern');
-
-  arrowEl.textContent = p.arrow;
-  labelEl.textContent = p.label;
-  beepEl.textContent  = p.beeps;
-
-  // Flash animation
-  arrowEl.classList.remove('flash');
-  void arrowEl.offsetWidth; // reflow
-  arrowEl.classList.add('flash');
+function saveRooms() {
+  localStorage.setItem('campus_rooms', JSON.stringify(rooms));
 }
 
-function renderStepList() {
-  const list = document.getElementById('step-list');
-  list.innerHTML = '';
-  navSteps.forEach((step, i) => {
-    const p  = PATTERNS[step.type] || PATTERNS.S;
-    const li = document.createElement('li');
-    li.className = 'step-item' +
-      (i === currentStep ? ' active-step' : i < currentStep ? ' done-step' : '');
-    li.innerHTML = `
-      <span class="step-arrow">${p.arrow}</span>
-      <span class="step-text">${step.text || p.label}</span>
-      <span class="step-dist">${step.dist > 0 ? step.dist + 'm' : ''}</span>
-    `;
-    list.appendChild(li);
+// ══════════════════════════════════════════════════════════
+//  MANAGE — ADD / DELETE ROOMS
+// ══════════════════════════════════════════════════════════
+async function captureGPS() {
+  const btn = document.getElementById('btn-capture-gps');
+  const info = document.getElementById('captured-coords');
+  btn.disabled = true;
+  btn.textContent = '⏳ Capturing...';
+  info.textContent = 'Getting GPS fix...';
+  info.className = '';
+
+  await new Promise(res => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        capturedLat = pos.coords.latitude;
+        capturedLng = pos.coords.longitude;
+        info.textContent = `✓ ${capturedLat.toFixed(6)}, ${capturedLng.toFixed(6)}  (±${Math.round(pos.coords.accuracy)}m)`;
+        info.className = 'ok';
+        res();
+      },
+      err => {
+        info.textContent = '❌ GPS failed: ' + err.message;
+        info.className = '';
+        capturedLat = null; capturedLng = null;
+        res();
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
   });
-  // Scroll active step into view
-  const active = list.querySelector('.active-step');
-  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  btn.disabled = false;
+  btn.textContent = '📍 Stand at room door → Capture GPS';
 }
 
-function updateObstacleBar(cm) {
-  const bar = document.getElementById('nav-obstacle-bar');
-  if (cm <= 30) {
-    bar.textContent = `⚠️ DANGER! Obstacle at ${cm}cm`;
-    bar.className = 'danger';
-  } else if (cm <= 80) {
-    bar.textContent = `⚠ Obstacle nearby: ${cm}cm`;
-    bar.className = 'warning';
-  } else {
-    bar.textContent = `Obstacle: ${cm}cm`;
-    bar.className = '';
+function addRoom() {
+  const name = document.getElementById('inp-name').value.trim();
+  const icon = document.getElementById('inp-icon').value.trim() || '🚪';
+  if (!name) { toast('Enter a room name', 'warn'); return; }
+  const room = {
+    id: Date.now().toString(),
+    name, icon,
+    lat: capturedLat,
+    lng: capturedLng
+  };
+  rooms.push(room);
+  saveRooms();
+  refreshRoomGrid();
+  refreshRoomList();
+  // Reset form
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-icon').value = '🚪';
+  document.getElementById('captured-coords').textContent = 'No location captured yet';
+  document.getElementById('captured-coords').className = '';
+  capturedLat = null; capturedLng = null;
+  toast('Room added: ' + name, 'ok');
+}
+
+function deleteRoom(id) {
+  rooms = rooms.filter(r => r.id !== id);
+  saveRooms();
+  refreshRoomGrid();
+  refreshRoomList();
+  toast('Room deleted', 'warn');
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER ROOMS
+// ══════════════════════════════════════════════════════════
+function refreshRoomGrid() {
+  const grid = document.getElementById('room-grid');
+  const noMsg = document.getElementById('no-rooms-msg');
+  grid.innerHTML = '';
+  if (!rooms.length) { noMsg.style.display = 'block'; return; }
+  noMsg.style.display = 'none';
+  rooms.forEach(room => {
+    let dist = '—';
+    if (userLat && room.lat) {
+      const d = haversine(userLat, userLng, room.lat, room.lng);
+      dist = d < 1000 ? Math.round(d) + 'm' : (d/1000).toFixed(1) + 'km';
+    }
+    const btn = document.createElement('div');
+    btn.className = 'room-btn' + (destRoom?.id === room.id ? ' navigating' : '');
+    btn.innerHTML = `
+      <span class="room-badge ${room.lat ? 'has-loc' : ''}">
+        ${room.lat ? 'GPS ✓' : 'No GPS'}
+      </span>
+      <div class="room-icon">${room.icon}</div>
+      <div class="room-name">${room.name}</div>
+      <div class="room-dist">${dist}</div>
+    `;
+    btn.onclick = () => startNavTo(room);
+    grid.appendChild(btn);
+  });
+}
+
+function refreshRoomList() {
+  const list = document.getElementById('room-list');
+  list.innerHTML = '';
+  if (!rooms.length) {
+    list.innerHTML = '<div style="padding:20px 18px;color:var(--muted);font-size:13px;text-align:center">No rooms yet. Add one above!</div>';
+    return;
   }
+  rooms.forEach(room => {
+    const card = document.createElement('div');
+    card.className = 'manage-card';
+    card.innerHTML = `
+      <div class="manage-card-icon">${room.icon}</div>
+      <div class="manage-card-info">
+        <h3>${room.name}</h3>
+        <p class="${room.lat ? '' : 'no-loc'}">
+          ${room.lat ? `${room.lat.toFixed(5)}, ${room.lng.toFixed(5)}` : '⚠ No GPS location set'}
+        </p>
+      </div>
+      <button class="btn-del" onclick="deleteRoom('${room.id}')" title="Delete">✕</button>
+    `;
+    list.appendChild(card);
+  });
 }
 
-async function triggerArrived() {
-  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  updateNavDisplay({ type: 'A' });
-  await sendNavCommand('A');
-  document.getElementById('arrived-place-name').textContent = `You have reached: ${destName}`;
+// ══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════
+function startNavTo(room) {
+  if (!bleConnected) { toast('Connect SmartStick first!', 'warn'); return; }
+  if (!room.lat) { toast('No GPS for ' + room.name + '. Stand there and capture location first.', 'warn', 4000); return; }
+
+  destRoom = room;
+  document.getElementById('nav-dest-name').textContent = room.icon + ' ' + room.name;
+  document.getElementById('arrived-room-name').textContent = 'You reached: ' + room.name;
+
+  // Build simple steps: bearing-based (1 step = head toward destination)
+  // The compass shows live direction, user taps to confirm each "leg"
+  navSteps = buildSteps();
+  currentStep = 0;
+
+  document.getElementById('nav-active').classList.add('show');
+  document.getElementById('room-grid-wrap').style.display = 'none';
+
+  renderStepDots();
+  showStep(0);
+  updateDistRemaining();
+
+  // Mark room as active
+  refreshRoomGrid();
+  toast('Navigate to ' + room.name, 'ok');
+}
+
+function buildSteps() {
+  // Generate bearing-aware steps from current location to dest
+  // Simple 3-step model: face direction → walk → arrived
+  // Could be extended with manual waypoints in future
+  return [
+    { cmd: 'S', label: 'Face the direction shown by compass' },
+    { cmd: 'S', label: 'Walk toward ' + destRoom.name },
+    { cmd: 'A', label: 'Arrived at ' + destRoom.name },
+  ];
+}
+
+async function showStep(i) {
+  if (i >= navSteps.length) { triggerArrived(); return; }
+  const step = navSteps[i];
+  const d = DIR[step.cmd] || DIR.S;
+
+  // Update display
+  const arrow = document.getElementById('nav-arrow');
+  arrow.textContent = d.arrow;
+  arrow.classList.remove('pop');
+  void arrow.offsetWidth;
+  arrow.classList.add('pop');
+
+  document.getElementById('nav-dir-label').textContent = d.label;
+  document.getElementById('nav-beeps').textContent = d.beeps;
+  document.getElementById('step-counter').textContent = `Step ${i+1}/${navSteps.length}`;
+
+  // Update dots
+  document.querySelectorAll('.step-dot').forEach((dot, idx) => {
+    dot.className = 'step-dot' + (idx < i ? ' done' : idx === i ? ' current' : '');
+  });
+
+  // Send BLE command
+  await sendCmd(step.cmd);
+
+  // Compass hint
+  updateCompassHint();
+}
+
+async function advanceStep() {
+  if (!navSteps.length) return;
+  if (currentStep >= navSteps.length - 1) { triggerArrived(); return; }
+  currentStep++;
+  await showStep(currentStep);
+}
+
+function renderStepDots() {
+  const wrap = document.getElementById('step-dots');
+  wrap.innerHTML = '';
+  navSteps.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i === 0 ? ' current' : '');
+    wrap.appendChild(d);
+  });
+}
+
+function updateDistRemaining() {
+  if (!userLat || !destRoom?.lat) return;
+  const d = haversine(userLat, userLng, destRoom.lat, destRoom.lng);
+  document.getElementById('dist-remaining').textContent =
+    d < 1000 ? Math.round(d) + 'm' : (d/1000).toFixed(2) + 'km';
+}
+
+function cancelNav() {
+  destRoom = null;
+  navSteps = [];
+  currentStep = 0;
+  document.getElementById('nav-active').classList.remove('show');
+  document.getElementById('room-grid-wrap').style.display = 'block';
+  sendCmd('X');
+  refreshRoomGrid();
+}
+
+function triggerArrived() {
+  sendCmd('A');
   document.getElementById('arrived-overlay').classList.add('show');
 }
 
 function dismissArrived() {
   document.getElementById('arrived-overlay').classList.remove('show');
-  stopNavigation();
+  cancelNav();
 }
 
-function stopNavigation() {
-  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  clearInterval(navInterval);
-  navSteps = []; currentStep = 0;
-  sendBLECommand('X');
-  showScreen('screen-home');
-  toast('Navigation stopped', 'info');
+// ══════════════════════════════════════════════════════════
+//  EXPORT / IMPORT MAP
+// ══════════════════════════════════════════════════════════
+function exportMap() {
+  const data = JSON.stringify({ version: 1, rooms }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'campus_map.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Map exported!', 'ok');
 }
 
-async function triggerSOS() {
-  toast('🆘 SOS sent!', 'error', 5000);
-  await sendBLECommand('D'); // Send danger/SOS
+function importMap() {
+  document.getElementById('import-file').click();
 }
 
-// ══════════════════════════════════════════════════════════════
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.rooms || !Array.isArray(data.rooms)) throw new Error('Invalid format');
+      rooms = data.rooms;
+      saveRooms();
+      refreshRoomGrid();
+      refreshRoomList();
+      toast(`Imported ${rooms.length} rooms!`, 'ok');
+    } catch(err) {
+      toast('Import failed: invalid file', 'err');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ══════════════════════════════════════════════════════════
 //  UI HELPERS
-// ══════════════════════════════════════════════════════════════
-function showScreen(id) {
+// ══════════════════════════════════════════════════════════
+function switchTab(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
 }
 
-let toastTimer = null;
-function toast(msg, type = 'info', duration = 3000) {
+let toastT = null;
+function toast(msg, type = 'info', ms = 3000) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.className = `show ${type}`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+  el.className = 'show ' + type;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), ms);
 }
 </script>
 </body>
