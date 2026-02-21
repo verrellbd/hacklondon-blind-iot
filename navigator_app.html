@@ -221,9 +221,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
         <button id="btn-cancel-nav" onclick="cancelNav()">✕ Cancel</button>
       </div>
 
-      <!-- BIG TAP ZONE -->
-      <div id="tap-zone" onclick="advanceStep()">
-        <div id="tap-hint">TAP TO ADVANCE STEP</div>
+      <!-- AUTO NAV DISPLAY (no tap needed) -->
+      <div id="tap-zone">
+        <div id="tap-hint">🔄 AUTO-TRACKING DIRECTION</div>
         <div id="nav-arrow">⬆️</div>
         <div id="nav-dir-label">Starting...</div>
         <div id="nav-beeps"></div>
@@ -250,7 +250,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 
       <!-- Step bar -->
       <div id="step-bar">
-        <span id="step-counter">Step 0/0</span>
+        <span id="step-counter">⚡ Live</span>
         <div id="step-dots"></div>
         <span id="dist-remaining">—m</span>
       </div>
@@ -420,9 +420,14 @@ function startGPS() {
   // Also watch for live updates during nav
   if (watchId) navigator.geolocation.clearWatch(watchId);
   watchId = navigator.geolocation.watchPosition(
-    pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; updateDistRemaining(); },
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      updateDistRemaining();
+      if (navActive) autoNavTick(); // re-check direction on every GPS update
+    },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 3000 }
+    { enableHighAccuracy: true, maximumAge: 1000 }
   );
 }
 
@@ -620,100 +625,119 @@ function refreshRoomList() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  NAVIGATION
+//  NAVIGATION — FULLY AUTOMATIC
+//
+//  Logic every 2 seconds while navigating:
+//    1. Get bearing from current GPS → destination
+//    2. Compare with phone compass heading
+//    3. Calculate angle difference (diff)
+//       diff > +25°  → Turn RIGHT → beep 1x → send "R"
+//       diff < -25°  → Turn LEFT  → beep 2x → send "L"
+//       |diff| < 25° → Go STRAIGHT → beep 3x → send "S"
+//    4. If distance < ARRIVE_THRESHOLD → Arrived → beep 5x → send "A"
+//
+//  Beep throttle: only send new command when direction CHANGES
+//  or every REPEAT_INTERVAL seconds to remind user
 // ══════════════════════════════════════════════════════════
+
+const ARRIVE_THRESHOLD = 8;    // metres — auto-arrive within 8m
+const CHECK_INTERVAL   = 2000; // ms — check direction every 2s
+const REPEAT_INTERVAL  = 6000; // ms — re-beep same direction every 6s
+const TURN_THRESHOLD   = 25;   // degrees — angle to trigger L/R beep
+
+let navTimer       = null;
+let lastSentCmd    = '';
+let lastSentTime   = 0;
+let navActive      = false;
+
 function startNavTo(room) {
   if (!bleConnected) { toast('Connect SmartStick first!', 'warn'); return; }
-  if (!room.lat) { toast('No GPS for ' + room.name + '. Stand there and capture location first.', 'warn', 4000); return; }
+  if (!room.lat)     { toast('No GPS for ' + room.name + '. Capture its location first.', 'warn', 4000); return; }
+  if (!userLat)      { toast('Your GPS not ready yet. Wait a moment.', 'warn'); return; }
 
-  destRoom = room;
-  document.getElementById('nav-dest-name').textContent = room.icon + ' ' + room.name;
+  destRoom  = room;
+  navActive = true;
+  lastSentCmd  = '';
+  lastSentTime = 0;
+
+  document.getElementById('nav-dest-name').textContent     = room.icon + ' ' + room.name;
   document.getElementById('arrived-room-name').textContent = 'You reached: ' + room.name;
-
-  // Build simple steps: bearing-based (1 step = head toward destination)
-  // The compass shows live direction, user taps to confirm each "leg"
-  navSteps = buildSteps();
-  currentStep = 0;
-
   document.getElementById('nav-active').classList.add('show');
-  document.getElementById('room-grid-wrap').style.display = 'none';
+  document.getElementById('room-grid-wrap').style.display  = 'none';
+  document.getElementById('tap-zone').style.cursor         = 'default';
 
-  renderStepDots();
-  showStep(0);
+  // Show initial state
+  setNavDisplay('S', 'Starting navigation...');
   updateDistRemaining();
-
-  // Mark room as active
   refreshRoomGrid();
-  toast('Navigate to ' + room.name, 'ok');
+  toast('Navigation started → auto-tracking', 'ok');
+
+  // Start auto-check loop
+  navTimer = setInterval(autoNavTick, CHECK_INTERVAL);
+  autoNavTick(); // run immediately
 }
 
-function buildSteps() {
-  // Generate bearing-aware steps from current location to dest
-  // Simple 3-step model: face direction → walk → arrived
-  // Could be extended with manual waypoints in future
-  return [
-    { cmd: 'S', label: 'Face the direction shown by compass' },
-    { cmd: 'S', label: 'Walk toward ' + destRoom.name },
-    { cmd: 'A', label: 'Arrived at ' + destRoom.name },
-  ];
+async function autoNavTick() {
+  if (!navActive || !destRoom) return;
+
+  // ── Check arrived ─────────────────────────────────────
+  if (userLat && destRoom.lat) {
+    const dist = haversine(userLat, userLng, destRoom.lat, destRoom.lng);
+    updateDistRemaining(dist);
+
+    if (dist <= ARRIVE_THRESHOLD) {
+      triggerArrived();
+      return;
+    }
+  }
+
+  // ── Calculate required direction ──────────────────────
+  const cmd = calcDirection();
+  const now = Date.now();
+
+  // Send if direction changed OR repeat interval passed
+  const dirChanged  = cmd !== lastSentCmd;
+  const timeToRepeat = (now - lastSentTime) >= REPEAT_INTERVAL;
+
+  if (dirChanged || timeToRepeat) {
+    lastSentCmd  = cmd;
+    lastSentTime = now;
+    await sendCmd(cmd);
+    setNavDisplay(cmd);
+    updateCompassHint();
+  }
 }
 
-async function showStep(i) {
-  if (i >= navSteps.length) { triggerArrived(); return; }
-  const step = navSteps[i];
-  const d = DIR[step.cmd] || DIR.S;
+function calcDirection() {
+  // If no compass heading, default to straight
+  if (userHeading === null || !userLat || !destRoom?.lat) return 'S';
 
-  // Update display
+  const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
+  // Angle difference: positive = need to turn right, negative = turn left
+  const diff = ((bearing - userHeading + 540) % 360) - 180;
+
+  if (diff > TURN_THRESHOLD)  return 'R';   // too far right of target
+  if (diff < -TURN_THRESHOLD) return 'L';   // too far left of target
+  return 'S';                                // on track, go straight
+}
+
+function setNavDisplay(cmd, overrideLabel) {
+  const d = DIR[cmd] || DIR.S;
   const arrow = document.getElementById('nav-arrow');
   arrow.textContent = d.arrow;
   arrow.classList.remove('pop');
   void arrow.offsetWidth;
   arrow.classList.add('pop');
-
-  document.getElementById('nav-dir-label').textContent = d.label;
-  document.getElementById('nav-beeps').textContent = d.beeps;
-  document.getElementById('step-counter').textContent = `Step ${i+1}/${navSteps.length}`;
-
-  // Update dots
-  document.querySelectorAll('.step-dot').forEach((dot, idx) => {
-    dot.className = 'step-dot' + (idx < i ? ' done' : idx === i ? ' current' : '');
-  });
-
-  // Send BLE command
-  await sendCmd(step.cmd);
-
-  // Compass hint
-  updateCompassHint();
-}
-
-async function advanceStep() {
-  if (!navSteps.length) return;
-  if (currentStep >= navSteps.length - 1) { triggerArrived(); return; }
-  currentStep++;
-  await showStep(currentStep);
-}
-
-function renderStepDots() {
-  const wrap = document.getElementById('step-dots');
-  wrap.innerHTML = '';
-  navSteps.forEach((_, i) => {
-    const d = document.createElement('div');
-    d.className = 'step-dot' + (i === 0 ? ' current' : '');
-    wrap.appendChild(d);
-  });
-}
-
-function updateDistRemaining() {
-  if (!userLat || !destRoom?.lat) return;
-  const d = haversine(userLat, userLng, destRoom.lat, destRoom.lng);
-  document.getElementById('dist-remaining').textContent =
-    d < 1000 ? Math.round(d) + 'm' : (d/1000).toFixed(2) + 'km';
+  document.getElementById('nav-dir-label').textContent = overrideLabel || d.label;
+  document.getElementById('nav-beeps').textContent     = d.beeps;
 }
 
 function cancelNav() {
+  navActive = false;
+  clearInterval(navTimer);
+  navTimer = null;
   destRoom = null;
-  navSteps = [];
-  currentStep = 0;
+  lastSentCmd = '';
   document.getElementById('nav-active').classList.remove('show');
   document.getElementById('room-grid-wrap').style.display = 'block';
   sendCmd('X');
@@ -721,14 +745,22 @@ function cancelNav() {
 }
 
 function triggerArrived() {
+  navActive = false;
+  clearInterval(navTimer);
+  navTimer = null;
   sendCmd('A');
-  document.getElementById('arrived-overlay').classList.add('show');
+  setNavDisplay('A');
+  setTimeout(() => document.getElementById('arrived-overlay').classList.add('show'), 800);
 }
 
 function dismissArrived() {
   document.getElementById('arrived-overlay').classList.remove('show');
   cancelNav();
 }
+
+// ── Keep these but simplify (no longer step-based) ────────
+function renderStepDots() {}   // not used in auto mode
+function advanceStep()    {}   // tap does nothing now
 
 // ══════════════════════════════════════════════════════════
 //  EXPORT / IMPORT MAP
