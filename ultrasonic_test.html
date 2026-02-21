@@ -11,59 +11,53 @@ body{
   background:#07080f; color:#e2e4f0;
   font-family:'IBM Plex Mono',monospace;
   display:flex; flex-direction:column; align-items:center;
-  justify-content:center; min-height:100dvh; gap:24px; padding:24px;
+  justify-content:center; min-height:100dvh; gap:20px; padding:24px;
 }
-
 h1{ font-size:16px; color:#5a5d7a; letter-spacing:1px; }
 
-/* Big status circle */
 #status-circle{
   width:200px; height:200px; border-radius:50%;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px; border:3px solid #252840;
-  transition: background 0.3s, border-color 0.3s;
+  gap:8px; border:3px solid #252840; transition: background 0.3s, border-color 0.3s;
   background: #13152a;
 }
-#status-circle.clear   { border-color:#4fffb0; background:rgba(79,255,176,0.07); }
-#status-circle.notice  { border-color:#ffd93d; background:rgba(255,217,61,0.07); }
-#status-circle.warn    { border-color:#ff9500; background:rgba(255,149,0,0.1); }
-#status-circle.danger  { border-color:#ff3d5a; background:rgba(255,61,90,0.15); animation: pulse 0.4s infinite alternate; }
-
-@keyframes pulse {
-  from { box-shadow: 0 0 0px #ff3d5a; }
-  to   { box-shadow: 0 0 30px #ff3d5a; }
-}
+#status-circle.clear  { border-color:#4fffb0; background:rgba(79,255,176,0.07); }
+#status-circle.notice { border-color:#ffd93d; background:rgba(255,217,61,0.07); }
+#status-circle.warn   { border-color:#ff9500; background:rgba(255,149,0,0.1); }
+#status-circle.danger { border-color:#ff3d5a; background:rgba(255,61,90,0.15); animation:pulse 0.4s infinite alternate; }
+@keyframes pulse{ from{box-shadow:0 0 0px #ff3d5a} to{box-shadow:0 0 30px #ff3d5a} }
 
 #status-emoji { font-size:56px; line-height:1; }
 #status-label { font-size:14px; font-weight:700; letter-spacing:2px; }
 #status-dist  { font-size:12px; color:#5a5d7a; }
 
-/* Log */
+/* Vibration unlock banner — shown until user taps */
+#vibe-unlock{
+  width:100%; max-width:360px;
+  background:rgba(255,217,61,0.12); border:1px solid #ffd93d;
+  border-radius:12px; padding:14px 16px;
+  font-size:12px; color:#ffd93d; text-align:center; line-height:1.6;
+  cursor:pointer;
+}
+#vibe-unlock.unlocked{ background:rgba(79,255,176,0.1); border-color:#4fffb0; color:#4fffb0; }
+
 #log{
   width:100%; max-width:360px; background:#0d0e1a;
   border:1px solid #252840; border-radius:12px;
   padding:12px; font-size:11px; color:#5a5d7a;
-  height:140px; overflow-y:auto; line-height:1.8;
+  height:120px; overflow-y:auto; line-height:1.8;
 }
-.log-danger { color:#ff3d5a; }
-.log-warn   { color:#ff9500; }
-.log-notice { color:#ffd93d; }
-.log-clear  { color:#4fffb0; }
+.log-danger{ color:#ff3d5a; } .log-warn{ color:#ff9500; }
+.log-notice{ color:#ffd93d; } .log-clear{ color:#4fffb0; }
+.log-info  { color:#4d9fff; }
 
-/* BLE button */
 #btn-ble{
-  width:100%; max-width:360px;
-  padding:16px; border-radius:12px;
+  width:100%; max-width:360px; padding:16px; border-radius:12px;
   background:#4fffb0; color:#07080f;
-  font-family:'IBM Plex Mono',monospace;
-  font-size:14px; font-weight:700;
+  font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:700;
   border:none; cursor:pointer;
-  transition: opacity 0.2s;
 }
-#btn-ble:disabled{ opacity:0.4; cursor:default; }
 #btn-ble.connected{ background:#1c1f38; color:#4fffb0; border:1px solid #4fffb0; }
-
-#vibe-status{ font-size:11px; color:#5a5d7a; }
 </style>
 </head>
 <body>
@@ -76,29 +70,55 @@ h1{ font-size:16px; color:#5a5d7a; letter-spacing:1px; }
   <div id="status-dist">Connect BLE first</div>
 </div>
 
-<div id="log">Waiting for BLE connection...<br/></div>
+<!-- Tap this to unlock vibration -->
+<div id="vibe-unlock" onclick="unlockVibration()">
+  ⚠️ TAP HERE FIRST to unlock vibration<br/>
+  <small>(Chrome requires a tap before vibration works)</small>
+</div>
 
-<div id="vibe-status">📳 Vibration: —</div>
+<div id="log">Waiting for BLE connection...<br/></div>
 
 <button id="btn-ble" onclick="connectBLE()">📡 Connect SmartStick</button>
 
 <script>
-// ── BLE UUIDs — must match ESP32 sketch ──────────────────────
 const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
 const NOTIFY_UUID  = '12345678-1234-1234-1234-123456789ab2';
 
 let bleDevice = null, notifyChar = null, connected = false;
+let vibrationUnlocked = false;
 
-// ── Vibration patterns per level ─────────────────────────────
-//    navigator.vibrate([on, off, on, off ...]) in ms
+// Vibration patterns
 const VIBE = {
-  CLEAR:  null,                          // no vibration
-  NOTICE: [100],                         // 1 short buzz
-  WARN:   [200, 100, 200],               // 2 medium buzzes
-  DANGER: [100,50, 100,50, 100,50, 100,50, 100], // 5 rapid buzzes
+  CLEAR:  null,
+  NOTICE: [100],
+  WARN:   [200, 100, 200],
+  DANGER: [100,50, 100,50, 100,50, 100,50, 100],
 };
 
-// ── Connect BLE ───────────────────────────────────────────────
+// ── UNLOCK VIBRATION ─────────────────────────────────────────
+// Chrome requires at least one user gesture before vibrate() works
+function unlockVibration() {
+  if (!navigator.vibrate) {
+    document.getElementById('vibe-unlock').innerHTML =
+      '❌ Vibration not supported on this device/browser';
+    log('navigator.vibrate not available on this device', 'danger');
+    return;
+  }
+  // Test vibrate with a short buzz
+  const result = navigator.vibrate(200);
+  if (result) {
+    vibrationUnlocked = true;
+    document.getElementById('vibe-unlock').innerHTML = '✅ Vibration unlocked!';
+    document.getElementById('vibe-unlock').classList.add('unlocked');
+    log('Vibration unlocked ✅', 'clear');
+  } else {
+    document.getElementById('vibe-unlock').innerHTML =
+      '❌ Vibration failed — check phone silent mode or browser settings';
+    log('vibrate() returned false — check silent/do-not-disturb mode', 'danger');
+  }
+}
+
+// ── BLE ──────────────────────────────────────────────────────
 async function connectBLE() {
   if (!navigator.bluetooth) { log('Web Bluetooth not supported', 'danger'); return; }
   const btn = document.getElementById('btn-ble');
@@ -115,11 +135,15 @@ async function connectBLE() {
     await notifyChar.startNotifications();
     notifyChar.addEventListener('characteristicvaluechanged', onNotify);
     connected = true;
-    btn.textContent = '✓ Connected — tap to disconnect';
-    btn.disabled = false;
+    btn.textContent = '✓ Connected'; btn.disabled = false;
     btn.classList.add('connected');
-    log('BLE connected!', 'clear');
+    log('BLE connected ✅', 'clear');
     setStatus('clear', '📡', 'CONNECTED', 'Point stick at objects');
+
+    // Remind user to unlock vibration if not done yet
+    if (!vibrationUnlocked) {
+      log('⚠️ Tap the yellow banner to unlock vibration!', 'notice');
+    }
   } catch(e) {
     btn.textContent = '📡 Connect SmartStick';
     btn.disabled = false;
@@ -131,13 +155,12 @@ function onDisconnect() {
   connected = false;
   const btn = document.getElementById('btn-ble');
   btn.textContent = '📡 Connect SmartStick';
-  btn.classList.remove('connected');
-  btn.disabled = false;
+  btn.classList.remove('connected'); btn.disabled = false;
   setStatus('', '📡', 'DISCONNECTED', '—');
   log('Disconnected', 'warn');
 }
 
-// ── Handle incoming BLE notification ─────────────────────────
+// ── HANDLE INCOMING BLE NOTIFICATION ────────────────────────
 function onNotify(e) {
   const msg = new TextDecoder().decode(e.target.value).trim();
   log('← ' + msg);
@@ -150,42 +173,37 @@ function onNotify(e) {
 
 function handleLevel(level) {
   // Update UI
-  switch(level) {
-    case 'CLEAR':
-      setStatus('clear',  '✅', 'CLEAR',   'No obstacles');
-      break;
-    case 'NOTICE':
-      setStatus('notice', '🟡', 'NOTICE',  '< 150cm nearby');
-      break;
-    case 'WARN':
-      setStatus('warn',   '🟠', 'WARNING', '< 80cm — slow down');
-      break;
-    case 'DANGER':
-      setStatus('danger', '🔴', 'DANGER',  '< 30cm — STOP!');
-      break;
-  }
+  const config = {
+    CLEAR:  { cls:'clear',  emoji:'✅', label:'CLEAR',   dist:'No obstacles' },
+    NOTICE: { cls:'notice', emoji:'🟡', label:'NOTICE',  dist:'< 150cm nearby' },
+    WARN:   { cls:'warn',   emoji:'🟠', label:'WARNING', dist:'< 80cm — slow down' },
+    DANGER: { cls:'danger', emoji:'🔴', label:'DANGER',  dist:'< 30cm — STOP!' },
+  };
+  const c = config[level];
+  setStatus(c.cls, c.emoji, c.label, c.dist);
 
-  // Vibrate phone
+  // Vibrate
   const pattern = VIBE[level];
-  if (pattern && navigator.vibrate) {
-    navigator.vibrate(pattern);
-    document.getElementById('vibe-status').textContent = '📳 Vibrating: ' + level;
+  if (pattern) {
+    if (!vibrationUnlocked) {
+      log('⚠️ Tap yellow banner to enable vibration!', 'notice');
+      return;
+    }
+    const ok = navigator.vibrate(pattern);
+    log('📳 Vibrate ' + level + (ok ? ' ✅' : ' ❌ failed'), level.toLowerCase());
   } else {
-    document.getElementById('vibe-status').textContent = '📳 No vibration (CLEAR)';
+    navigator.vibrate(0); // stop any ongoing vibration
+    log('Level: ' + level, 'clear');
   }
-
-  log('Level: ' + level, level.toLowerCase());
 }
 
 function setStatus(cls, emoji, label, dist) {
-  const circle = document.getElementById('status-circle');
-  circle.className = cls;
+  document.getElementById('status-circle').className = cls;
   document.getElementById('status-emoji').textContent = emoji;
   document.getElementById('status-label').textContent = label;
   document.getElementById('status-dist').textContent  = dist;
 }
 
-// ── Log ───────────────────────────────────────────────────────
 function log(msg, cls) {
   const el   = document.getElementById('log');
   const line = document.createElement('div');
@@ -194,6 +212,17 @@ function log(msg, cls) {
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
 }
+
+// Check vibration support on load
+window.addEventListener('load', () => {
+  if (!navigator.vibrate) {
+    document.getElementById('vibe-unlock').innerHTML =
+      '❌ Vibration API not supported on this browser/device';
+    log('Vibration not supported', 'danger');
+  } else {
+    log('Vibration API available ✅ — tap yellow banner to unlock', 'info');
+  }
+});
 </script>
 </body>
 </html>
