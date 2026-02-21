@@ -222,7 +222,11 @@
     gap: 16px;
     position: relative;
     overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
+  #nav-direction-box:active { background: rgba(0,229,255,0.05); }
   #nav-direction-box::before {
     content: '';
     position: absolute;
@@ -449,6 +453,25 @@
       <button id="btn-ble-connect" onclick="connectBLE()">📡 Connect SmartStick</button>
     </div>
 
+    <!-- GPS Status + Manual Fallback -->
+    <div id="gps-card" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+      <div id="gps-status" style="font-size:13px;font-family:'Space Mono',monospace;color:var(--muted);">📍 Getting GPS location...</div>
+      <div id="manual-location-wrap" style="display:none;margin-top:12px;gap:8px;flex-direction:column;">
+        <div style="font-size:12px;color:var(--muted);">Enter your current location (street, area, or city):</div>
+        <div style="display:flex;gap:8px;">
+          <input id="manual-location-input" type="text" placeholder="e.g. Jalan Ampang, Kuala Lumpur"
+            style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+                   padding:10px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;outline:none;"
+            onkeydown="if(event.key==='Enter') resolveManualLocation()"/>
+          <button id="btn-set-location" onclick="resolveManualLocation()"
+            style="padding:10px 16px;background:var(--accent2);color:#fff;border:none;border-radius:10px;
+                   font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">
+            Set
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Search -->
     <div id="search-section">
       <h2>🔍 Search Destination</h2>
@@ -477,8 +500,12 @@
       <div id="nav-destination">Navigating to: <span id="nav-dest-label">—</span></div>
     </div>
 
-    <!-- Big direction arrow -->
-    <div id="nav-direction-box">
+    <!-- Big direction arrow — TAP TO ADVANCE -->
+    <div id="nav-direction-box" onclick="advanceStep()" title="Tap to go to next step">
+
+      <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;">
+        TAP ANYWHERE TO ADVANCE →
+      </div>
       <div id="nav-arrow">⬆️</div>
       <div id="nav-label">Calculating...</div>
       <div id="nav-beep-pattern"></div>
@@ -526,7 +553,6 @@
 //  BLE UUIDs must match the ESP32 sketch exactly!
 // ══════════════════════════════════════════════════════════════
 
-// In navigator_app.html — must be IDENTICAL to .ino
 const BLE_SERVICE_UUID     = '12345678-1234-1234-1234-123456789abc';
 const BLE_CMD_CHAR_UUID    = '12345678-1234-1234-1234-123456789ab1';
 const BLE_NOTIFY_CHAR_UUID = '12345678-1234-1234-1234-123456789ab2';
@@ -681,12 +707,55 @@ function setBLEStatus(state, name = '') {
 //  LOCATION
 // ══════════════════════════════════════════════════════════════
 function requestLocation() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    showManualLocationInput('GPS not supported on this browser.');
+    return;
+  }
   navigator.geolocation.getCurrentPosition(
-    pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; },
-    err => toast('GPS unavailable: ' + err.message, 'warn'),
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      document.getElementById('gps-status').textContent = '📍 GPS ready';
+      document.getElementById('gps-status').style.color = 'var(--success)';
+      document.getElementById('manual-location-wrap').style.display = 'none';
+    },
+    err => {
+      console.warn('GPS error:', err.message);
+      showManualLocationInput('GPS denied — enter your location manually to get accurate results.');
+    },
     { enableHighAccuracy: true, timeout: 10000 }
   );
+}
+
+function showManualLocationInput(reason) {
+  document.getElementById('gps-status').textContent = '⚠️ ' + reason;
+  document.getElementById('gps-status').style.color = 'var(--warn)';
+  document.getElementById('manual-location-wrap').style.display = 'flex';
+}
+
+async function resolveManualLocation() {
+  const val = document.getElementById('manual-location-input').value.trim();
+  if (!val) return;
+  const btn = document.getElementById('btn-set-location');
+  btn.textContent = 'Searching...';
+  btn.disabled = true;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=1`;
+    const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await resp.json();
+    if (!data.length) throw new Error('Location not found');
+    userLat = parseFloat(data[0].lat);
+    userLng = parseFloat(data[0].lon);
+    document.getElementById('gps-status').textContent = '📍 Location set: ' + data[0].display_name.split(',')[0];
+    document.getElementById('gps-status').style.color = 'var(--success)';
+    document.getElementById('manual-location-wrap').style.display = 'none';
+    toast('Location set! Now search your destination.', 'success');
+  } catch(e) {
+    toast('Could not find that location. Try being more specific.', 'error');
+  } finally {
+    btn.textContent = 'Set';
+    btn.disabled = false;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -820,11 +889,24 @@ async function selectDestination(lat, lng, name) {
     toast('Connect SmartStick first!', 'warn', 3000);
     return;
   }
+
+  // If we still don't have user location, try once more then ask manually
   if (!userLat) {
-    toast('Getting your GPS location...', 'info');
-    await new Promise(res => navigator.geolocation.getCurrentPosition(pos => {
-      userLat = pos.coords.latitude; userLng = pos.coords.longitude; res();
-    }, res, { enableHighAccuracy: true, timeout: 8000 }));
+    toast('Getting your location...', 'info');
+    await new Promise(res => {
+      navigator.geolocation.getCurrentPosition(
+        pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; res(); },
+        () => res(), // continue even if denied — will show error below
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    });
+  }
+
+  // Still no location — can't navigate without starting point
+  if (!userLat) {
+    toast('Cannot navigate — your location is unknown. Enter it manually above.', 'error', 5000);
+    showManualLocationInput('Enter your current location to start navigation.');
+    return;
   }
 
   destLat = lat; destLng = lng; destName = name;
@@ -916,27 +998,33 @@ function onPositionUpdate(lat, lng) {
   userLat = lat; userLng = lng;
   if (!navSteps.length) return;
 
-  const step = navSteps[currentStep];
-  const distToStep = haversine(lat, lng, step.lat, step.lng);
   const distToDest = haversine(lat, lng, destLat, destLng);
 
-  // Update progress bar
+  // GPS only used to update distance display — NOT for step advancing
   const progress = Math.max(0, Math.min(100, ((totalDist - distToDest) / totalDist) * 100));
   document.getElementById('dist-fill').style.width = progress + '%';
   document.getElementById('nav-dist-label').textContent = `Distance: ${Math.round(distToDest)}m remaining`;
+}
 
-  // Advance to next step if within 15m of waypoint
-  if (distToStep < 15 && currentStep < navSteps.length - 1) {
-    currentStep++;
-    const next = navSteps[currentStep];
-    updateNavDisplay(next);
-    sendNavCommand(next.type);
-    renderStepList();
+// ── Tap to advance to next step ───────────────────────────────
+async function advanceStep() {
+  if (!navSteps.length) return;
+
+  // If on last step (arrived) — trigger arrived
+  if (currentStep >= navSteps.length - 1) {
+    triggerArrived();
+    return;
   }
 
-  // Arrived within 10m of destination
-  if (distToDest < 10) {
-    triggerArrived();
+  currentStep++;
+  const next = navSteps[currentStep];
+  updateNavDisplay(next);
+  await sendNavCommand(next.type);
+  renderStepList();
+
+  // If this new step is arrived
+  if (next.type === 'A') {
+    setTimeout(() => triggerArrived(), 2000);
   }
 }
 
