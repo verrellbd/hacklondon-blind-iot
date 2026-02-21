@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>SmartStick Control</title>
+<title>SmartStick SOS</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *{ box-sizing:border-box; margin:0; padding:0; }
@@ -11,9 +11,8 @@ body{
   background:#07080f; color:#e2e4f0;
   font-family:'IBM Plex Mono',monospace;
   display:flex; flex-direction:column; align-items:center;
-  min-height:100dvh; gap:16px; padding:20px;
+  min-height:100dvh; gap:14px; padding:20px;
 }
-
 h1{ font-size:15px; color:#5a5d7a; letter-spacing:1px; margin-top:4px; }
 
 /* BLE bar */
@@ -24,214 +23,178 @@ h1{ font-size:15px; color:#5a5d7a; letter-spacing:1px; margin-top:4px; }
   padding:12px 16px;
 }
 #ble-info{ display:flex; align-items:center; gap:8px; font-size:12px; color:#5a5d7a; }
-#ble-dot{ width:8px; height:8px; border-radius:50%; background:#5a5d7a; flex-shrink:0; }
-#ble-dot.on{ background:#4fffb0; box-shadow:0 0 6px #4fffb0; }
+#ble-dot{ width:8px; height:8px; border-radius:50%; background:#5a5d7a; flex-shrink:0; transition:background .3s; }
+#ble-dot.on  { background:#4fffb0; box-shadow:0 0 6px #4fffb0; }
 #ble-dot.spin{ background:#ffd93d; animation:blink 1s infinite; }
-@keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.2} }
-#btn-ble-connect{
+@keyframes blink{ 0%,100%{opacity:1}50%{opacity:.2} }
+#btn-ble{
   background:#4fffb0; color:#07080f; border:none; border-radius:8px;
   padding:8px 14px; font-family:'IBM Plex Mono',monospace;
   font-size:12px; font-weight:700; cursor:pointer;
 }
-#btn-ble-connect.connected{ background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; }
+#btn-ble.connected{ background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; }
 
-/* OLED preview */
-#oled-preview{
+/* Contact card */
+#contact-card{
   width:100%; max-width:380px;
-  background:#000; border:2px solid #252840; border-radius:10px;
-  padding:0; overflow:hidden; position:relative;
+  background:#0d0e1a; border:1px solid #252840; border-radius:14px; padding:16px;
 }
-#oled-preview::before{
-  content:'OLED PREVIEW';
-  position:absolute; top:6px; right:8px;
-  font-size:9px; color:#252840; letter-spacing:1px;
+#contact-card h2{ font-size:11px; color:#5a5d7a; letter-spacing:1px; margin-bottom:12px; }
+.field{ display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+.field label{ font-size:11px; color:#5a5d7a; }
+.inp{
+  background:#13152a; border:1px solid #252840; border-radius:8px;
+  padding:10px 12px; color:#e2e4f0;
+  font-family:'IBM Plex Mono',monospace; font-size:13px; outline:none;
+  transition:border-color .2s; width:100%;
 }
-#oled-screen{
-  width:256px; height:128px; margin:16px auto;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:4px; font-family:'IBM Plex Mono',monospace;
+.inp:focus{ border-color:#4fffb0; }
+.inp::placeholder{ color:#3a3d55; }
+.contact-type-row{ display:flex; gap:8px; margin-bottom:10px; }
+.type-btn{
+  flex:1; padding:8px; background:#13152a; border:1px solid #252840;
+  border-radius:8px; color:#5a5d7a; font-family:'IBM Plex Mono',monospace;
+  font-size:11px; cursor:pointer; transition:all .2s; text-align:center;
 }
-#oled-line1{ font-size:18px; color:#e2e4f0; font-weight:700; letter-spacing:1px; }
-#oled-line2{ font-size:11px; color:#8a8a9a; }
-#oled-line3{ font-size:11px; color:#8a8a9a; }
-#oled-line4{ font-size:10px; color:#4fffb0; }
+.type-btn.active{ border-color:#4fffb0; color:#4fffb0; background:rgba(79,255,176,.08); }
+#btn-save{
+  width:100%; padding:11px; background:rgba(79,255,176,.1);
+  border:1px solid #4fffb0; border-radius:8px; color:#4fffb0;
+  font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; cursor:pointer;
+}
+#save-msg{ font-size:10px; color:#4fffb0; text-align:center; min-height:14px; margin-top:6px; }
 
-/* Control buttons grid */
-#btn-grid{
+/* SOS status panel */
+#sos-panel{
   width:100%; max-width:380px;
-  display:grid; grid-template-columns:1fr 1fr;
-  gap:12px;
+  background:#0d0e1a; border:2px solid #252840; border-radius:14px;
+  padding:24px 16px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  transition:border-color .3s, background .3s;
 }
-
-.ctrl-btn{
-  background:#0d0e1a; border:1px solid #252840; border-radius:14px;
-  padding:20px 16px; cursor:pointer; text-align:center;
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  transition:all .15s; user-select:none; -webkit-tap-highlight-color:transparent;
-  position:relative; overflow:hidden;
+#sos-panel.active{
+  border-color:#ff3d5a; background:rgba(255,61,90,.08);
+  animation:sosPulse .5s infinite alternate;
 }
-.ctrl-btn:active{ transform:scale(0.96); }
-.ctrl-btn::before{
-  content:''; position:absolute; inset:0;
-  background:var(--clr); opacity:0;
-  transition:opacity .2s; border-radius:14px;
+@keyframes sosPulse{
+  from{ box-shadow:0 0 0 #ff3d5a; }
+  to  { box-shadow:0 0 24px rgba(255,61,90,.5); }
 }
-.ctrl-btn:active::before{ opacity:0.08; }
-
-.ctrl-btn .icon{ font-size:32px; line-height:1; }
-.ctrl-btn .name{ font-size:13px; font-weight:700; letter-spacing:1px; }
-.ctrl-btn .desc{ font-size:10px; color:#5a5d7a; }
-.ctrl-btn .badge{
-  position:absolute; top:8px; right:8px;
-  font-size:9px; padding:2px 6px;
-  border-radius:4px; font-weight:700; letter-spacing:.5px;
-  opacity:0; transition:opacity .3s;
-}
-.ctrl-btn.sent .badge{ opacity:1; }
-
-/* Button specific colors */
-#btn-pwr  { --clr:#4fffb0; border-color:#1c3a2e; }
-#btn-pwr:hover  { border-color:#4fffb0; }
-#btn-pwr  .badge{ background:rgba(79,255,176,.2); color:#4fffb0; }
-
-#btn-snd  { --clr:#4d9fff; border-color:#1a2a3a; }
-#btn-snd:hover  { border-color:#4d9fff; }
-#btn-snd  .badge{ background:rgba(77,159,255,.2); color:#4d9fff; }
-
-#btn-find { --clr:#ffd93d; border-color:#3a3020; }
-#btn-find:hover { border-color:#ffd93d; }
-#btn-find .badge{ background:rgba(255,217,61,.2); color:#ffd93d; }
-#btn-find.active-find { border-color:#ffd93d; background:rgba(255,217,61,.06); }
-
-#btn-sos  { --clr:#ff3d5a; border-color:#3a1a20; }
-#btn-sos:hover  { border-color:#ff3d5a; }
-#btn-sos  .badge{ background:rgba(255,61,90,.2); color:#ff3d5a; }
-
-/* STOP button — full width */
-#btn-stop{
-  width:100%; max-width:380px;
-  background:#1a1a1a; border:1px solid #333; border-radius:14px;
-  padding:14px; cursor:pointer; text-align:center;
-  font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
-  color:#5a5d7a; transition:all .2s; display:none;
-}
-#btn-stop.show{ display:block; }
-#btn-stop:hover{ border-color:#ff3d5a; color:#ff3d5a; }
+#sos-emoji{ font-size:52px; line-height:1; }
+#sos-title{ font-size:15px; font-weight:700; letter-spacing:2px; }
+#sos-sub  { font-size:11px; color:#5a5d7a; }
 
 /* Log */
 #log{
   width:100%; max-width:380px;
   background:#0d0e1a; border:1px solid #252840; border-radius:12px;
   padding:10px 12px; font-size:10px; color:#5a5d7a;
-  height:80px; overflow-y:auto; line-height:1.8;
+  height:90px; overflow-y:auto; line-height:1.8;
 }
-.lc{ color:#4fffb0; } .lb{ color:#4d9fff; }
-.ly{ color:#ffd93d; } .lr{ color:#ff3d5a; }
+.lc{color:#4fffb0} .lr{color:#ff3d5a} .ly{color:#ffd93d} .lb{color:#4d9fff}
 </style>
 </head>
 <body>
 
-<h1>🦯 SMARTSTICK CONTROL</h1>
+<h1>🆘 SMARTSTICK SOS</h1>
 
-<!-- BLE Bar -->
+<!-- BLE -->
 <div id="ble-bar">
   <div id="ble-info">
     <div id="ble-dot"></div>
     <span id="ble-label">Not connected</span>
   </div>
-  <button id="btn-ble-connect" onclick="connectBLE()">Connect</button>
+  <button id="btn-ble" onclick="connectBLE()">Connect</button>
 </div>
 
-<!-- OLED Preview -->
-<div id="oled-preview">
-  <div id="oled-screen">
-    <div id="oled-line1">SmartStick</div>
-    <div id="oled-line2">Waiting for</div>
-    <div id="oled-line3">connection...</div>
-    <div id="oled-line4"></div>
+<!-- Emergency Contact -->
+<div id="contact-card">
+  <h2>⚙ EMERGENCY CONTACT</h2>
+
+  <div class="field">
+    <label>Contact Name</label>
+    <input class="inp" id="inp-name" type="text" placeholder="e.g. Mum, Dad, Guardian"/>
   </div>
+
+  <div class="field">
+    <label>Phone Number (with country code, no +)</label>
+    <input class="inp" id="inp-phone" type="tel" placeholder="e.g. 601112345678"/>
+  </div>
+
+  <div class="field">
+    <label>Contact Method</label>
+    <div class="contact-type-row">
+      <div class="type-btn active" id="type-call"    onclick="setType('call')">📞 Call</div>
+      <div class="type-btn"        id="type-whatsapp" onclick="setType('whatsapp')">💬 WhatsApp</div>
+      <div class="type-btn"        id="type-sms"     onclick="setType('sms')">✉ SMS</div>
+    </div>
+  </div>
+
+  <div class="field" id="msg-field" style="display:none">
+    <label>Message (for WhatsApp/SMS)</label>
+    <input class="inp" id="inp-msg" type="text" placeholder="I need help! Please come."/>
+  </div>
+
+  <button id="btn-save" onclick="saveContact()">💾 Save Contact</button>
+  <div id="save-msg"></div>
 </div>
 
-<!-- Control Buttons -->
-<div id="btn-grid">
-
-  <div class="ctrl-btn" id="btn-pwr" onclick="sendCmd('PWR','btn-pwr')">
-    <span class="badge">SENT ✓</span>
-    <div class="icon">⚡</div>
-    <div class="name">POWER</div>
-    <div class="desc">Show device status</div>
-  </div>
-
-  <div class="ctrl-btn" id="btn-snd" onclick="sendCmd('SND','btn-snd')">
-    <span class="badge">SENT ✓</span>
-    <div class="icon">🔊</div>
-    <div class="name">SOUND</div>
-    <div class="desc">Play locator tone</div>
-  </div>
-
-  <div class="ctrl-btn" id="btn-find" onclick="toggleFind()">
-    <span class="badge" id="find-badge">START</span>
-    <div class="icon">📍</div>
-    <div class="name">FIND STICK</div>
-    <div class="desc">Beep every 2s</div>
-  </div>
-
-  <div class="ctrl-btn" id="btn-sos" onclick="sendCmd('SOS','btn-sos')">
-    <span class="badge">SENT ✓</span>
-    <div class="icon">🆘</div>
-    <div class="name">SOS</div>
-    <div class="desc">Emergency signal</div>
-  </div>
-
+<!-- SOS Status -->
+<div id="sos-panel">
+  <div id="sos-emoji">🔋</div>
+  <div id="sos-title">STANDBY</div>
+  <div id="sos-sub">Connect BLE and save a contact</div>
 </div>
-
-<!-- Stop button (shown when FIND is active) -->
-<button id="btn-stop" onclick="sendCmd('STOP','btn-find')">
-  ⏹ STOP FIND BEEPING
-</button>
 
 <!-- Log -->
-<div id="log">Ready — connect BLE to start<br/></div>
+<div id="log">Ready — connect BLE and save emergency contact<br/></div>
 
 <script>
 const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
-const CMD_UUID     = '12345678-1234-1234-1234-123456789ab1';
 const NOTIFY_UUID  = '12345678-1234-1234-1234-123456789ab2';
 
-let bleDevice = null, cmdChar = null, notifyChar = null;
-let connected = false, findActive = false;
+let bleDevice = null, notifyChar = null, connected = false;
+let contactType = 'call';
 
-// OLED screen definitions per command
-const OLED_SCREENS = {
-  PWR: {
-    l1:'DEVICE STATUS', l2:'Status : ONLINE',
-    l3:'BLE    : Connected', l4:'System : OK'
-  },
-  SND: {
-    l1:'SOUND', l2:'Playing locator',
-    l3:'tone...', l4:'♪ ♪ ♪'
-  },
-  FIND: {
-    l1:'FIND ME', l2:'Beeping every 2s',
-    l3:'Tap STOP to end', l4:'* * * * *'
-  },
-  SOS: {
-    l1:'SOS !', l2:'Emergency signal',
-    l3:'sent to phone', l4:'· · · — — — · · ·'
-  },
-  STOP: {
-    l1:'STOPPED', l2:'Sound stopped.',
-    l3:'', l4:''
-  },
-};
+// ── Load saved on startup ─────────────────────────────────────
+window.addEventListener('load', () => {
+  const c = JSON.parse(localStorage.getItem('sos_contact') || '{}');
+  if (c.name)  document.getElementById('inp-name').value  = c.name;
+  if (c.phone) document.getElementById('inp-phone').value = c.phone;
+  if (c.msg)   document.getElementById('inp-msg').value   = c.msg;
+  if (c.type)  setType(c.type);
+  if (c.name)  document.getElementById('save-msg').textContent = '✓ Loaded: ' + c.name;
+});
+
+// ── Contact type selector ────────────────────────────────────
+function setType(type) {
+  contactType = type;
+  ['call','whatsapp','sms'].forEach(t => {
+    document.getElementById('type-' + t).classList.toggle('active', t === type);
+  });
+  document.getElementById('msg-field').style.display =
+    (type === 'whatsapp' || type === 'sms') ? 'flex' : 'none';
+}
+
+// ── Save contact ─────────────────────────────────────────────
+function saveContact() {
+  const name  = document.getElementById('inp-name').value.trim();
+  const phone = document.getElementById('inp-phone').value.trim().replace(/\D/g,'');
+  const msg   = document.getElementById('inp-msg').value.trim();
+  if (!name)  { document.getElementById('save-msg').textContent = '⚠ Enter a name'; return; }
+  if (!phone) { document.getElementById('save-msg').textContent = '⚠ Enter a phone number'; return; }
+  localStorage.setItem('sos_contact', JSON.stringify({ name, phone, msg, type: contactType }));
+  document.getElementById('save-msg').textContent = '✅ Saved: ' + name;
+  log('Contact saved: ' + name + ' via ' + contactType, 'lc');
+}
 
 // ── BLE ──────────────────────────────────────────────────────
 async function connectBLE() {
-  if (connected) { disconnectBLE(); return; }
+  if (connected) { if (bleDevice?.gatt.connected) bleDevice.gatt.disconnect(); return; }
   if (!navigator.bluetooth) { log('Web Bluetooth not supported', 'lr'); return; }
-  const btn = document.getElementById('btn-ble-connect');
+  const btn = document.getElementById('btn-ble');
   btn.textContent = 'Scanning...'; btn.disabled = true;
-  setBLEDot('spin');
+  document.getElementById('ble-dot').className = 'spin';
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
       filters: [{ name: 'SmartStick' }],
@@ -240,113 +203,112 @@ async function connectBLE() {
     bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
     const server = await bleDevice.gatt.connect();
     const svc    = await server.getPrimaryService(SERVICE_UUID);
-    cmdChar      = await svc.getCharacteristic(CMD_UUID);
     notifyChar   = await svc.getCharacteristic(NOTIFY_UUID);
     await notifyChar.startNotifications();
     notifyChar.addEventListener('characteristicvaluechanged', onNotify);
     connected = true;
-    setBLEDot('on');
+    document.getElementById('ble-dot').className = 'on';
     document.getElementById('ble-label').textContent = bleDevice.name || 'SmartStick';
-    btn.textContent = 'Disconnect'; btn.disabled = false;
-    btn.classList.add('connected');
-    log('Connected to SmartStick ✅', 'lc');
-    setOLED('', 'SmartStick', 'BLE Connected', 'Ready!', '');
+    btn.textContent = 'Disconnect'; btn.disabled = false; btn.classList.add('connected');
+    setPanel('🟢', 'READY', 'Hold button 3s on stick to trigger SOS', false);
+    log('Connected ✅ — monitoring for SOS', 'lc');
   } catch(e) {
-    setBLEDot('');
+    document.getElementById('ble-dot').className = '';
     btn.textContent = 'Connect'; btn.disabled = false;
     log('BLE failed: ' + e.message, 'lr');
   }
 }
 
 function onDisconnect() {
-  connected = false; findActive = false;
-  cmdChar = null; notifyChar = null;
-  setBLEDot('');
+  connected = false; notifyChar = null;
+  document.getElementById('ble-dot').className = '';
   document.getElementById('ble-label').textContent = 'Not connected';
-  const btn = document.getElementById('btn-ble-connect');
-  btn.textContent = 'Connect'; btn.classList.remove('connected');
-  document.getElementById('btn-stop').classList.remove('show');
-  document.getElementById('btn-find').classList.remove('active-find');
+  const btn = document.getElementById('btn-ble');
+  btn.textContent = 'Connect'; btn.disabled = false; btn.classList.remove('connected');
+  setPanel('🔋', 'DISCONNECTED', 'Reconnect to monitor SOS', false);
   log('Disconnected', 'ly');
-  setOLED('', 'SmartStick', 'Disconnected', '', '');
 }
 
-function disconnectBLE() {
-  if (bleDevice?.gatt.connected) bleDevice.gatt.disconnect();
-}
-
-// ── SEND COMMAND ─────────────────────────────────────────────
-async function sendCmd(cmd, btnId) {
-  if (!connected || !cmdChar) { log('Not connected!', 'lr'); return; }
-  try {
-    await cmdChar.writeValueWithoutResponse(new TextEncoder().encode(cmd));
-    log('→ Sent: ' + cmd, 'lb');
-
-    // Update OLED preview immediately
-    const s = OLED_SCREENS[cmd];
-    if (s) setOLED('', s.l1, s.l2, s.l3, s.l4);
-
-    // Flash SENT badge
-    if (btnId) {
-      const btn = document.getElementById(btnId);
-      btn.classList.add('sent');
-      setTimeout(() => btn.classList.remove('sent'), 1500);
-    }
-  } catch(e) {
-    log('Send error: ' + e.message, 'lr');
-  }
-}
-
-// ── FIND TOGGLE ───────────────────────────────────────────────
-async function toggleFind() {
-  if (!findActive) {
-    findActive = true;
-    document.getElementById('btn-find').classList.add('active-find');
-    document.getElementById('find-badge').textContent = 'ACTIVE';
-    document.getElementById('btn-stop').classList.add('show');
-    await sendCmd('FIND', 'btn-find');
-    log('Find mode ON — stick beeping every 2s', 'ly');
-  } else {
-    findActive = false;
-    document.getElementById('btn-find').classList.remove('active-find');
-    document.getElementById('find-badge').textContent = 'START';
-    document.getElementById('btn-stop').classList.remove('show');
-    await sendCmd('STOP', null);
-    log('Find mode OFF', 'lc');
-  }
-}
-
-// ── RECEIVE NOTIFICATIONS ────────────────────────────────────
+// ── Receive BLE notification ──────────────────────────────────
 function onNotify(e) {
   const msg = new TextDecoder().decode(e.target.value).trim();
-  log('← ' + msg, 'lc');
-  if (msg === 'STOP:OK') {
-    setOLED('', 'STOPPED', 'Sound stopped.', '', '');
-    findActive = false;
-    document.getElementById('btn-find').classList.remove('active-find');
-    document.getElementById('btn-stop').classList.remove('show');
+  log('← ' + msg, 'lb');
+  if (msg === 'SOS') triggerSOS();
+}
+
+// ── SOS trigger ───────────────────────────────────────────────
+function triggerSOS() {
+  const c = JSON.parse(localStorage.getItem('sos_contact') || '{}');
+  if (!c.phone) {
+    log('⚠ No contact saved! Set one above.', 'lr');
+    setPanel('⚠️', 'NO CONTACT!', 'Please save an emergency contact first', true);
+    if (navigator.vibrate) navigator.vibrate([400,100,400,100,400]);
+    return;
+  }
+
+  log('🆘 SOS received! Contacting ' + c.name + ' via ' + c.type, 'lr');
+  setPanel('🆘', 'SOS TRIGGERED!', 'Contacting ' + c.name + '...', true);
+  if (navigator.vibrate) navigator.vibrate([500,100,500,100,500,100,500]);
+
+  if (c.type === 'call') {
+    // Open phone dialer immediately
+    window.location.href = 'tel:' + c.phone;
+
+  } else if (c.type === 'whatsapp') {
+    // Build message with GPS location
+    sendWithLocation(c);
+
+  } else if (c.type === 'sms') {
+    const body = buildMessage(c, null);
+    window.location.href = 'sms:' + c.phone + '?body=' + encodeURIComponent(body);
+  }
+
+  // Reset panel after 10s
+  setTimeout(() => setPanel('🟢', 'READY', 'Hold button 3s on stick to trigger SOS', false), 10000);
+}
+
+function sendWithLocation(c) {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        const msg = buildMessage(c, url);
+        window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
+        log('WhatsApp opened with location ✅', 'lc');
+      },
+      () => {
+        const msg = buildMessage(c, null);
+        window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
+        log('WhatsApp opened (no location)', 'ly');
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  } else {
+    const msg = buildMessage(c, null);
+    window.open('https://wa.me/' + c.phone + '?text=' + encodeURIComponent(msg), '_blank');
   }
 }
 
-// ── OLED PREVIEW ─────────────────────────────────────────────
-function setOLED(icon, l1, l2, l3, l4) {
-  document.getElementById('oled-line1').textContent = l1 || '';
-  document.getElementById('oled-line2').textContent = l2 || '';
-  document.getElementById('oled-line3').textContent = l3 || '';
-  document.getElementById('oled-line4').textContent = l4 || '';
+function buildMessage(c, locationUrl) {
+  const base = c.msg || 'I need help! Please come immediately.';
+  let msg = `🆘 SOS - SmartStick Emergency 🆘\n\n${base}`;
+  if (locationUrl) msg += `\n\n📍 Location:\n${locationUrl}`;
+  return msg;
 }
 
-// ── HELPERS ───────────────────────────────────────────────────
-function setBLEDot(state) {
-  document.getElementById('ble-dot').className = state;
+function setPanel(emoji, title, sub, active) {
+  document.getElementById('sos-emoji').textContent = emoji;
+  document.getElementById('sos-title').textContent = title;
+  document.getElementById('sos-sub').textContent   = sub;
+  document.getElementById('sos-panel').classList.toggle('active', active);
 }
 
 function log(msg, cls) {
-  const el   = document.getElementById('log');
-  const line = document.createElement('div');
-  if (cls) line.className = cls;
-  line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
-  el.appendChild(line);
+  const el = document.getElementById('log');
+  const d  = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  el.appendChild(d);
   el.scrollTop = el.scrollHeight;
 }
 </script>
