@@ -658,18 +658,18 @@ function refreshRoomList() {
 //  or every REPEAT_INTERVAL seconds to remind user
 // ══════════════════════════════════════════════════════════
 
-const ARRIVE_THRESHOLD = 8;    // metres — auto-arrive within 8m
-const CHECK_INTERVAL   = 2000; // ms — check direction every 2s
-const REPEAT_INTERVAL  = 6000; // ms — re-beep same direction every 6s
-const TURN_THRESHOLD   = 45;   // degrees — angle to trigger L/R beep
+const ARRIVE_THRESHOLD = 4;    // metres — tighter arrival detection
+const CHECK_INTERVAL   = 1000; // ms — check every 1s
+const REPEAT_INTERVAL  = 5000; // ms — re-beep same direction every 5s
+const TURN_THRESHOLD   = 45;   // degrees — back to working value
+const CONFIRM_TICKS    = 3;    // must see same direction 3 times before firing
 
 let navTimer       = null;
 let lastSentCmd    = '';
 let lastSentTime   = 0;
 let navActive      = false;
-let pendingCmd     = '';      // candidate direction
-let pendingCount   = 0;       // how many ticks it's been consistent
-const CONFIRM_TICKS = 2;      // must see same direction N times before sending
+let pendingCmd     = '';
+let pendingCount   = 0;
 
 function startNavTo(room) {
   if (!bleConnected) { toast('Connect SmartStick first!', 'warn'); return; }
@@ -756,16 +756,25 @@ async function autoNavTick() {
 }
 
 function calcDirection() {
-  // If no compass heading, default to straight
   if (userHeading === null || !userLat || !destRoom?.lat) return 'S';
 
   const bearing = getBearing(userLat, userLng, destRoom.lat, destRoom.lng);
-  // Angle difference: positive = need to turn right, negative = turn left
-  const diff = ((bearing - userHeading + 540) % 360) - 180;
+  const diff    = ((bearing - userHeading + 540) % 360) - 180;
 
-  if (diff > TURN_THRESHOLD)  return 'R';   // too far right of target
-  if (diff < -TURN_THRESHOLD) return 'L';   // too far left of target
-  return 'S';                                // on track, go straight
+  // Hysteresis: once turning, need to come within INNER_THRESHOLD
+  // to go back to straight — prevents rapid L/S/R flipping
+  const INNER = TURN_THRESHOLD - 15;  // 30° — must reach this to re-center
+  if (lastSentCmd === 'R') {
+    return diff > INNER  ? 'R' : diff < -TURN_THRESHOLD ? 'L' : 'S';
+  }
+  if (lastSentCmd === 'L') {
+    return diff < -INNER ? 'L' : diff > TURN_THRESHOLD  ? 'R' : 'S';
+  }
+
+  // Default: use full threshold
+  if (diff >  TURN_THRESHOLD) return 'R';
+  if (diff < -TURN_THRESHOLD) return 'L';
+  return 'S';
 }
 
 function setNavDisplay(cmd, overrideLabel) {
