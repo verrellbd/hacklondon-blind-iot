@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Ultrasonic Test</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  background:#07080f; color:#e2e4f0;
+  font-family:'IBM Plex Mono',monospace;
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100dvh; gap:24px; padding:24px;
+}
+
+h1{ font-size:16px; color:#5a5d7a; letter-spacing:1px; }
+
+/* Big status circle */
+#status-circle{
+  width:200px; height:200px; border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; border:3px solid #252840;
+  transition: background 0.3s, border-color 0.3s;
+  background: #13152a;
+}
+#status-circle.clear   { border-color:#4fffb0; background:rgba(79,255,176,0.07); }
+#status-circle.notice  { border-color:#ffd93d; background:rgba(255,217,61,0.07); }
+#status-circle.warn    { border-color:#ff9500; background:rgba(255,149,0,0.1); }
+#status-circle.danger  { border-color:#ff3d5a; background:rgba(255,61,90,0.15); animation: pulse 0.4s infinite alternate; }
+
+@keyframes pulse {
+  from { box-shadow: 0 0 0px #ff3d5a; }
+  to   { box-shadow: 0 0 30px #ff3d5a; }
+}
+
+#status-emoji { font-size:56px; line-height:1; }
+#status-label { font-size:14px; font-weight:700; letter-spacing:2px; }
+#status-dist  { font-size:12px; color:#5a5d7a; }
+
+/* Log */
+#log{
+  width:100%; max-width:360px; background:#0d0e1a;
+  border:1px solid #252840; border-radius:12px;
+  padding:12px; font-size:11px; color:#5a5d7a;
+  height:140px; overflow-y:auto; line-height:1.8;
+}
+.log-danger { color:#ff3d5a; }
+.log-warn   { color:#ff9500; }
+.log-notice { color:#ffd93d; }
+.log-clear  { color:#4fffb0; }
+
+/* BLE button */
+#btn-ble{
+  width:100%; max-width:360px;
+  padding:16px; border-radius:12px;
+  background:#4fffb0; color:#07080f;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:14px; font-weight:700;
+  border:none; cursor:pointer;
+  transition: opacity 0.2s;
+}
+#btn-ble:disabled{ opacity:0.4; cursor:default; }
+#btn-ble.connected{ background:#1c1f38; color:#4fffb0; border:1px solid #4fffb0; }
+
+#vibe-status{ font-size:11px; color:#5a5d7a; }
+</style>
+</head>
+<body>
+
+<h1>🦯 ULTRASONIC TEST</h1>
+
+<div id="status-circle">
+  <div id="status-emoji">📡</div>
+  <div id="status-label">WAITING</div>
+  <div id="status-dist">Connect BLE first</div>
+</div>
+
+<div id="log">Waiting for BLE connection...<br/></div>
+
+<div id="vibe-status">📳 Vibration: —</div>
+
+<button id="btn-ble" onclick="connectBLE()">📡 Connect SmartStick</button>
+
+<script>
+// ── BLE UUIDs — must match ESP32 sketch ──────────────────────
+const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+const NOTIFY_UUID  = '12345678-1234-1234-1234-123456789ab2';
+
+let bleDevice = null, notifyChar = null, connected = false;
+
+// ── Vibration patterns per level ─────────────────────────────
+//    navigator.vibrate([on, off, on, off ...]) in ms
+const VIBE = {
+  CLEAR:  null,                          // no vibration
+  NOTICE: [100],                         // 1 short buzz
+  WARN:   [200, 100, 200],               // 2 medium buzzes
+  DANGER: [100,50, 100,50, 100,50, 100,50, 100], // 5 rapid buzzes
+};
+
+// ── Connect BLE ───────────────────────────────────────────────
+async function connectBLE() {
+  if (!navigator.bluetooth) { log('Web Bluetooth not supported', 'danger'); return; }
+  const btn = document.getElementById('btn-ble');
+  btn.textContent = 'Scanning...'; btn.disabled = true;
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'SmartStick' }],
+      optionalServices: [SERVICE_UUID]
+    });
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
+    const server = await bleDevice.gatt.connect();
+    const svc    = await server.getPrimaryService(SERVICE_UUID);
+    notifyChar   = await svc.getCharacteristic(NOTIFY_UUID);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener('characteristicvaluechanged', onNotify);
+    connected = true;
+    btn.textContent = '✓ Connected — tap to disconnect';
+    btn.disabled = false;
+    btn.classList.add('connected');
+    log('BLE connected!', 'clear');
+    setStatus('clear', '📡', 'CONNECTED', 'Point stick at objects');
+  } catch(e) {
+    btn.textContent = '📡 Connect SmartStick';
+    btn.disabled = false;
+    log('BLE failed: ' + e.message, 'danger');
+  }
+}
+
+function onDisconnect() {
+  connected = false;
+  const btn = document.getElementById('btn-ble');
+  btn.textContent = '📡 Connect SmartStick';
+  btn.classList.remove('connected');
+  btn.disabled = false;
+  setStatus('', '📡', 'DISCONNECTED', '—');
+  log('Disconnected', 'warn');
+}
+
+// ── Handle incoming BLE notification ─────────────────────────
+function onNotify(e) {
+  const msg = new TextDecoder().decode(e.target.value).trim();
+  log('← ' + msg);
+
+  if      (msg === 'OBS:CLEAR')  handleLevel('CLEAR');
+  else if (msg === 'OBS:NOTICE') handleLevel('NOTICE');
+  else if (msg === 'OBS:WARN')   handleLevel('WARN');
+  else if (msg === 'OBS:DANGER') handleLevel('DANGER');
+}
+
+function handleLevel(level) {
+  // Update UI
+  switch(level) {
+    case 'CLEAR':
+      setStatus('clear',  '✅', 'CLEAR',   'No obstacles');
+      break;
+    case 'NOTICE':
+      setStatus('notice', '🟡', 'NOTICE',  '< 150cm nearby');
+      break;
+    case 'WARN':
+      setStatus('warn',   '🟠', 'WARNING', '< 80cm — slow down');
+      break;
+    case 'DANGER':
+      setStatus('danger', '🔴', 'DANGER',  '< 30cm — STOP!');
+      break;
+  }
+
+  // Vibrate phone
+  const pattern = VIBE[level];
+  if (pattern && navigator.vibrate) {
+    navigator.vibrate(pattern);
+    document.getElementById('vibe-status').textContent = '📳 Vibrating: ' + level;
+  } else {
+    document.getElementById('vibe-status').textContent = '📳 No vibration (CLEAR)';
+  }
+
+  log('Level: ' + level, level.toLowerCase());
+}
+
+function setStatus(cls, emoji, label, dist) {
+  const circle = document.getElementById('status-circle');
+  circle.className = cls;
+  document.getElementById('status-emoji').textContent = emoji;
+  document.getElementById('status-label').textContent = label;
+  document.getElementById('status-dist').textContent  = dist;
+}
+
+// ── Log ───────────────────────────────────────────────────────
+function log(msg, cls) {
+  const el   = document.getElementById('log');
+  const line = document.createElement('div');
+  if (cls) line.className = 'log-' + cls;
+  line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
