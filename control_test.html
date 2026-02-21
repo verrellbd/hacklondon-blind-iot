@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>SmartStick Control</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  background:#07080f; color:#e2e4f0;
+  font-family:'IBM Plex Mono',monospace;
+  display:flex; flex-direction:column; align-items:center;
+  min-height:100dvh; gap:16px; padding:20px;
+}
+
+h1{ font-size:15px; color:#5a5d7a; letter-spacing:1px; margin-top:4px; }
+
+/* BLE bar */
+#ble-bar{
+  width:100%; max-width:380px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:#0d0e1a; border:1px solid #252840; border-radius:12px;
+  padding:12px 16px;
+}
+#ble-info{ display:flex; align-items:center; gap:8px; font-size:12px; color:#5a5d7a; }
+#ble-dot{ width:8px; height:8px; border-radius:50%; background:#5a5d7a; flex-shrink:0; }
+#ble-dot.on{ background:#4fffb0; box-shadow:0 0 6px #4fffb0; }
+#ble-dot.spin{ background:#ffd93d; animation:blink 1s infinite; }
+@keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.2} }
+#btn-ble-connect{
+  background:#4fffb0; color:#07080f; border:none; border-radius:8px;
+  padding:8px 14px; font-family:'IBM Plex Mono',monospace;
+  font-size:12px; font-weight:700; cursor:pointer;
+}
+#btn-ble-connect.connected{ background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; }
+
+/* OLED preview */
+#oled-preview{
+  width:100%; max-width:380px;
+  background:#000; border:2px solid #252840; border-radius:10px;
+  padding:0; overflow:hidden; position:relative;
+}
+#oled-preview::before{
+  content:'OLED PREVIEW';
+  position:absolute; top:6px; right:8px;
+  font-size:9px; color:#252840; letter-spacing:1px;
+}
+#oled-screen{
+  width:256px; height:128px; margin:16px auto;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; font-family:'IBM Plex Mono',monospace;
+}
+#oled-line1{ font-size:18px; color:#e2e4f0; font-weight:700; letter-spacing:1px; }
+#oled-line2{ font-size:11px; color:#8a8a9a; }
+#oled-line3{ font-size:11px; color:#8a8a9a; }
+#oled-line4{ font-size:10px; color:#4fffb0; }
+
+/* Control buttons grid */
+#btn-grid{
+  width:100%; max-width:380px;
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.ctrl-btn{
+  background:#0d0e1a; border:1px solid #252840; border-radius:14px;
+  padding:20px 16px; cursor:pointer; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  transition:all .15s; user-select:none; -webkit-tap-highlight-color:transparent;
+  position:relative; overflow:hidden;
+}
+.ctrl-btn:active{ transform:scale(0.96); }
+.ctrl-btn::before{
+  content:''; position:absolute; inset:0;
+  background:var(--clr); opacity:0;
+  transition:opacity .2s; border-radius:14px;
+}
+.ctrl-btn:active::before{ opacity:0.08; }
+
+.ctrl-btn .icon{ font-size:32px; line-height:1; }
+.ctrl-btn .name{ font-size:13px; font-weight:700; letter-spacing:1px; }
+.ctrl-btn .desc{ font-size:10px; color:#5a5d7a; }
+.ctrl-btn .badge{
+  position:absolute; top:8px; right:8px;
+  font-size:9px; padding:2px 6px;
+  border-radius:4px; font-weight:700; letter-spacing:.5px;
+  opacity:0; transition:opacity .3s;
+}
+.ctrl-btn.sent .badge{ opacity:1; }
+
+/* Button specific colors */
+#btn-pwr  { --clr:#4fffb0; border-color:#1c3a2e; }
+#btn-pwr:hover  { border-color:#4fffb0; }
+#btn-pwr  .badge{ background:rgba(79,255,176,.2); color:#4fffb0; }
+
+#btn-snd  { --clr:#4d9fff; border-color:#1a2a3a; }
+#btn-snd:hover  { border-color:#4d9fff; }
+#btn-snd  .badge{ background:rgba(77,159,255,.2); color:#4d9fff; }
+
+#btn-find { --clr:#ffd93d; border-color:#3a3020; }
+#btn-find:hover { border-color:#ffd93d; }
+#btn-find .badge{ background:rgba(255,217,61,.2); color:#ffd93d; }
+#btn-find.active-find { border-color:#ffd93d; background:rgba(255,217,61,.06); }
+
+#btn-sos  { --clr:#ff3d5a; border-color:#3a1a20; }
+#btn-sos:hover  { border-color:#ff3d5a; }
+#btn-sos  .badge{ background:rgba(255,61,90,.2); color:#ff3d5a; }
+
+/* STOP button — full width */
+#btn-stop{
+  width:100%; max-width:380px;
+  background:#1a1a1a; border:1px solid #333; border-radius:14px;
+  padding:14px; cursor:pointer; text-align:center;
+  font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
+  color:#5a5d7a; transition:all .2s; display:none;
+}
+#btn-stop.show{ display:block; }
+#btn-stop:hover{ border-color:#ff3d5a; color:#ff3d5a; }
+
+/* Log */
+#log{
+  width:100%; max-width:380px;
+  background:#0d0e1a; border:1px solid #252840; border-radius:12px;
+  padding:10px 12px; font-size:10px; color:#5a5d7a;
+  height:80px; overflow-y:auto; line-height:1.8;
+}
+.lc{ color:#4fffb0; } .lb{ color:#4d9fff; }
+.ly{ color:#ffd93d; } .lr{ color:#ff3d5a; }
+</style>
+</head>
+<body>
+
+<h1>🦯 SMARTSTICK CONTROL</h1>
+
+<!-- BLE Bar -->
+<div id="ble-bar">
+  <div id="ble-info">
+    <div id="ble-dot"></div>
+    <span id="ble-label">Not connected</span>
+  </div>
+  <button id="btn-ble-connect" onclick="connectBLE()">Connect</button>
+</div>
+
+<!-- OLED Preview -->
+<div id="oled-preview">
+  <div id="oled-screen">
+    <div id="oled-line1">SmartStick</div>
+    <div id="oled-line2">Waiting for</div>
+    <div id="oled-line3">connection...</div>
+    <div id="oled-line4"></div>
+  </div>
+</div>
+
+<!-- Control Buttons -->
+<div id="btn-grid">
+
+  <div class="ctrl-btn" id="btn-pwr" onclick="sendCmd('PWR','btn-pwr')">
+    <span class="badge">SENT ✓</span>
+    <div class="icon">⚡</div>
+    <div class="name">POWER</div>
+    <div class="desc">Show device status</div>
+  </div>
+
+  <div class="ctrl-btn" id="btn-snd" onclick="sendCmd('SND','btn-snd')">
+    <span class="badge">SENT ✓</span>
+    <div class="icon">🔊</div>
+    <div class="name">SOUND</div>
+    <div class="desc">Play locator tone</div>
+  </div>
+
+  <div class="ctrl-btn" id="btn-find" onclick="toggleFind()">
+    <span class="badge" id="find-badge">START</span>
+    <div class="icon">📍</div>
+    <div class="name">FIND STICK</div>
+    <div class="desc">Beep every 2s</div>
+  </div>
+
+  <div class="ctrl-btn" id="btn-sos" onclick="sendCmd('SOS','btn-sos')">
+    <span class="badge">SENT ✓</span>
+    <div class="icon">🆘</div>
+    <div class="name">SOS</div>
+    <div class="desc">Emergency signal</div>
+  </div>
+
+</div>
+
+<!-- Stop button (shown when FIND is active) -->
+<button id="btn-stop" onclick="sendCmd('STOP','btn-find')">
+  ⏹ STOP FIND BEEPING
+</button>
+
+<!-- Log -->
+<div id="log">Ready — connect BLE to start<br/></div>
+
+<script>
+const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+const CMD_UUID     = '12345678-1234-1234-1234-123456789ab1';
+const NOTIFY_UUID  = '12345678-1234-1234-1234-123456789ab2';
+
+let bleDevice = null, cmdChar = null, notifyChar = null;
+let connected = false, findActive = false;
+
+// OLED screen definitions per command
+const OLED_SCREENS = {
+  PWR: {
+    l1:'DEVICE STATUS', l2:'Status : ONLINE',
+    l3:'BLE    : Connected', l4:'System : OK'
+  },
+  SND: {
+    l1:'SOUND', l2:'Playing locator',
+    l3:'tone...', l4:'♪ ♪ ♪'
+  },
+  FIND: {
+    l1:'FIND ME', l2:'Beeping every 2s',
+    l3:'Tap STOP to end', l4:'* * * * *'
+  },
+  SOS: {
+    l1:'SOS !', l2:'Emergency signal',
+    l3:'sent to phone', l4:'· · · — — — · · ·'
+  },
+  STOP: {
+    l1:'STOPPED', l2:'Sound stopped.',
+    l3:'', l4:''
+  },
+};
+
+// ── BLE ──────────────────────────────────────────────────────
+async function connectBLE() {
+  if (connected) { disconnectBLE(); return; }
+  if (!navigator.bluetooth) { log('Web Bluetooth not supported', 'lr'); return; }
+  const btn = document.getElementById('btn-ble-connect');
+  btn.textContent = 'Scanning...'; btn.disabled = true;
+  setBLEDot('spin');
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'SmartStick' }],
+      optionalServices: [SERVICE_UUID]
+    });
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
+    const server = await bleDevice.gatt.connect();
+    const svc    = await server.getPrimaryService(SERVICE_UUID);
+    cmdChar      = await svc.getCharacteristic(CMD_UUID);
+    notifyChar   = await svc.getCharacteristic(NOTIFY_UUID);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener('characteristicvaluechanged', onNotify);
+    connected = true;
+    setBLEDot('on');
+    document.getElementById('ble-label').textContent = bleDevice.name || 'SmartStick';
+    btn.textContent = 'Disconnect'; btn.disabled = false;
+    btn.classList.add('connected');
+    log('Connected to SmartStick ✅', 'lc');
+    setOLED('', 'SmartStick', 'BLE Connected', 'Ready!', '');
+  } catch(e) {
+    setBLEDot('');
+    btn.textContent = 'Connect'; btn.disabled = false;
+    log('BLE failed: ' + e.message, 'lr');
+  }
+}
+
+function onDisconnect() {
+  connected = false; findActive = false;
+  cmdChar = null; notifyChar = null;
+  setBLEDot('');
+  document.getElementById('ble-label').textContent = 'Not connected';
+  const btn = document.getElementById('btn-ble-connect');
+  btn.textContent = 'Connect'; btn.classList.remove('connected');
+  document.getElementById('btn-stop').classList.remove('show');
+  document.getElementById('btn-find').classList.remove('active-find');
+  log('Disconnected', 'ly');
+  setOLED('', 'SmartStick', 'Disconnected', '', '');
+}
+
+function disconnectBLE() {
+  if (bleDevice?.gatt.connected) bleDevice.gatt.disconnect();
+}
+
+// ── SEND COMMAND ─────────────────────────────────────────────
+async function sendCmd(cmd, btnId) {
+  if (!connected || !cmdChar) { log('Not connected!', 'lr'); return; }
+  try {
+    await cmdChar.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+    log('→ Sent: ' + cmd, 'lb');
+
+    // Update OLED preview immediately
+    const s = OLED_SCREENS[cmd];
+    if (s) setOLED('', s.l1, s.l2, s.l3, s.l4);
+
+    // Flash SENT badge
+    if (btnId) {
+      const btn = document.getElementById(btnId);
+      btn.classList.add('sent');
+      setTimeout(() => btn.classList.remove('sent'), 1500);
+    }
+  } catch(e) {
+    log('Send error: ' + e.message, 'lr');
+  }
+}
+
+// ── FIND TOGGLE ───────────────────────────────────────────────
+async function toggleFind() {
+  if (!findActive) {
+    findActive = true;
+    document.getElementById('btn-find').classList.add('active-find');
+    document.getElementById('find-badge').textContent = 'ACTIVE';
+    document.getElementById('btn-stop').classList.add('show');
+    await sendCmd('FIND', 'btn-find');
+    log('Find mode ON — stick beeping every 2s', 'ly');
+  } else {
+    findActive = false;
+    document.getElementById('btn-find').classList.remove('active-find');
+    document.getElementById('find-badge').textContent = 'START';
+    document.getElementById('btn-stop').classList.remove('show');
+    await sendCmd('STOP', null);
+    log('Find mode OFF', 'lc');
+  }
+}
+
+// ── RECEIVE NOTIFICATIONS ────────────────────────────────────
+function onNotify(e) {
+  const msg = new TextDecoder().decode(e.target.value).trim();
+  log('← ' + msg, 'lc');
+  if (msg === 'STOP:OK') {
+    setOLED('', 'STOPPED', 'Sound stopped.', '', '');
+    findActive = false;
+    document.getElementById('btn-find').classList.remove('active-find');
+    document.getElementById('btn-stop').classList.remove('show');
+  }
+}
+
+// ── OLED PREVIEW ─────────────────────────────────────────────
+function setOLED(icon, l1, l2, l3, l4) {
+  document.getElementById('oled-line1').textContent = l1 || '';
+  document.getElementById('oled-line2').textContent = l2 || '';
+  document.getElementById('oled-line3').textContent = l3 || '';
+  document.getElementById('oled-line4').textContent = l4 || '';
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function setBLEDot(state) {
+  document.getElementById('ble-dot').className = state;
+}
+
+function log(msg, cls) {
+  const el   = document.getElementById('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
