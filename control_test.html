@@ -124,14 +124,14 @@ h1{ font-size:15px; color:#5a5d7a; letter-spacing:1px; margin-top:4px; }
   <div class="field">
     <label>Contact Method</label>
     <div class="contact-type-row">
-      <div class="type-btn active" id="type-call"    onclick="setType('call')">📞 Call</div>
-      <div class="type-btn"        id="type-whatsapp" onclick="setType('whatsapp')">💬 WhatsApp</div>
-      <div class="type-btn"        id="type-sms"     onclick="setType('sms')">✉ SMS</div>
+      <div class="type-btn"        id="type-call"     onclick="setType('call')">📞 Call</div>
+      <div class="type-btn active" id="type-whatsapp" onclick="setType('whatsapp')">💬 WhatsApp</div>
+      <div class="type-btn"        id="type-sms"      onclick="setType('sms')">✉ SMS</div>
     </div>
   </div>
 
-  <div class="field" id="msg-field" style="display:none">
-    <label>Message (for WhatsApp/SMS)</label>
+  <div class="field" id="msg-field">
+    <label>Message</label>
     <input class="inp" id="inp-msg" type="text" placeholder="I need help! Please come."/>
   </div>
 
@@ -163,6 +163,7 @@ window.addEventListener('load', () => {
   if (c.phone) document.getElementById('inp-phone').value = c.phone;
   if (c.msg)   document.getElementById('inp-msg').value   = c.msg;
   if (c.type)  setType(c.type);
+  else         setType('whatsapp');  // default to WhatsApp
   if (c.name)  document.getElementById('save-msg').textContent = '✓ Loaded: ' + c.name;
 });
 
@@ -251,8 +252,8 @@ function triggerSOS() {
   if (navigator.vibrate) navigator.vibrate([500,100,500,100,500,100,500]);
 
   if (c.type === 'call') {
-    // Open phone dialer immediately
-    window.location.href = 'tel:' + c.phone;
+    // Call changed to WhatsApp
+    sendWithLocation(c);
 
   } else if (c.type === 'whatsapp') {
     // Build message with GPS location
