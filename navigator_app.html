@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>SmartStick Navigator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  /* ── Reset & Base ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #13131a;
+    --card:      #1a1a24;
+    --border:    #2a2a38;
+    --accent:    #00e5ff;
+    --accent2:   #7c4dff;
+    --danger:    #ff3d5a;
+    --warn:      #ffab00;
+    --success:   #00e676;
+    --text:      #e8e8f0;
+    --muted:     #6b6b80;
+    --radius:    16px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── App Shell ────────────────────────────────── */
+  #app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── Top Bar ──────────────────────────────────── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #topbar h1 {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: var(--accent);
+  }
+  #ble-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    transition: all 0.2s;
+  }
+  #ble-status:hover { border-color: var(--accent); color: var(--accent); }
+  #ble-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  #ble-dot.connected    { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  #ble-dot.connecting   { background: var(--warn);    animation: pulse 1s infinite; }
+  #ble-dot.disconnected { background: var(--danger); }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  /* ── Screens ──────────────────────────────────── */
+  .screen { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding: 16px 20px; }
+  .screen.active { display: flex; }
+
+  /* ── Home Screen ──────────────────────────────── */
+  #screen-home { gap: 16px; }
+
+  /* BLE connect card */
+  #ble-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+  #ble-card.connected { border-color: var(--success); }
+  #ble-card h2 { font-size: 15px; color: var(--muted); margin-bottom: 8px; }
+  #ble-device-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    min-height: 18px;
+  }
+  #btn-ble-connect {
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent2);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  #btn-ble-connect:active { transform: scale(0.97); }
+  #btn-ble-connect:disabled { opacity: 0.4; cursor: default; }
+
+  /* Search bar */
+  #search-section h2 { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  #search-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  #search-input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #search-input:focus { border-color: var(--accent); }
+  #search-input::placeholder { color: var(--muted); }
+
+  #btn-voice {
+    width: 50px; height: 50px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  #btn-voice.listening { background: var(--danger); border-color: var(--danger); animation: pulse 0.8s infinite; }
+
+  #search-results {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .place-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .place-card:active { transform: scale(0.98); background: var(--surface); }
+  .place-card:hover  { border-color: var(--accent); }
+  .place-icon { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
+  .place-info h3 { font-size: 15px; font-weight: 700; }
+  .place-info p  { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'Space Mono', monospace; }
+
+  /* Favorites */
+  #favorites-section h2 { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  #favorites-list { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── Navigation Screen ────────────────────────── */
+  #screen-nav {
+    gap: 0;
+    padding: 0;
+  }
+
+  #nav-header {
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #nav-destination {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+  #nav-destination span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Big direction display */
+  #nav-direction-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  #nav-direction-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(0,229,255,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #nav-arrow {
+    font-size: 100px;
+    line-height: 1;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 20px rgba(0,229,255,0.4));
+  }
+  #nav-arrow.flash { animation: arrowFlash 0.4s ease; }
+  @keyframes arrowFlash {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.2); }
+  }
+
+  #nav-label {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  #nav-beep-pattern {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    letter-spacing: 6px;
+    color: var(--accent2);
+    min-height: 28px;
+  }
+
+  #nav-distance-bar {
+    width: 100%;
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+  #nav-dist-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  #dist-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #dist-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 3px;
+    width: 0%;
+    transition: width 1s ease;
+  }
+
+  #nav-obstacle-bar {
+    padding: 10px 20px;
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    min-height: 36px;
+  }
+  #nav-obstacle-bar.danger  { color: var(--danger); }
+  #nav-obstacle-bar.warning { color: var(--warn); }
+
+  #nav-controls {
+    display: flex;
+    gap: 10px;
+    padding: 12px 20px 20px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  #btn-stop-nav {
+    flex: 1;
+    padding: 16px;
+    background: transparent;
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #btn-stop-nav:hover { background: var(--danger); color: #fff; }
+
+  #btn-sos {
+    width: 56px;
+    height: 56px;
+    background: var(--danger);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s;
+    flex-shrink: 0;
+  }
+  #btn-sos:active { transform: scale(0.93); }
+
+  /* ── Step list (turn-by-turn) ─────────────────── */
+  #step-list-wrap {
+    padding: 0 20px 12px;
+    flex-shrink: 0;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  #step-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    transition: all 0.3s;
+  }
+  .step-item.active-step {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.08);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .step-item.done-step {
+    opacity: 0.35;
+    text-decoration: line-through;
+  }
+  .step-arrow { font-size: 16px; flex-shrink: 0; }
+  .step-text  { font-size: 12px; font-family: 'Space Mono', monospace; }
+  .step-dist  { margin-left: auto; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+  /* ── Toast ────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+    max-width: 90vw;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.error   { border-color: var(--danger);  color: var(--danger); }
+  #toast.success { border-color: var(--success); color: var(--success); }
+  #toast.info    { border-color: var(--accent);  color: var(--accent); }
+  #toast.warn    { border-color: var(--warn);    color: var(--warn); }
+
+  /* ── Arrived overlay ──────────────────────────── */
+  #arrived-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,230,118,0.12);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  #arrived-overlay.show { display: flex; }
+  #arrived-overlay .big-emoji { font-size: 80px; }
+  #arrived-overlay h2 { font-size: 36px; font-weight: 800; color: var(--success); }
+  #arrived-overlay p  { color: var(--muted); font-size: 14px; }
+  #btn-dismiss-arrived {
+    margin-top: 8px;
+    padding: 14px 32px;
+    background: var(--success);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Top Bar ─────────────────────────────────── -->
+  <div id="topbar">
+    <h1>🦯 SmartStick</h1>
+    <div id="ble-status" onclick="toggleBLE()" title="Click to connect/disconnect BLE">
+      <div id="ble-dot"></div>
+      <span id="ble-label">Not connected</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SCREEN: HOME
+  ════════════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+
+    <!-- BLE Connect Card -->
+    <div id="ble-card">
+      <h2>Stick Connection</h2>
+      <div id="ble-device-name">—</div>
+      <button id="btn-ble-connect" onclick="connectBLE()">📡 Connect SmartStick</button>
+    </div>
+
+    <!-- Search -->
+    <div id="search-section">
+      <h2>🔍 Search Destination</h2>
+      <div id="search-wrap">
+        <input id="search-input" type="text" placeholder="e.g. Hospital, School, Park..."
+               oninput="onSearchInput()" onkeydown="if(event.key==='Enter')doSearch()"/>
+        <button id="btn-voice" onclick="startVoice()" title="Voice search">🎤</button>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- Favorites -->
+    <div id="favorites-section">
+      <h2>⭐ Saved Places</h2>
+      <div id="favorites-list"></div>
+    </div>
+
+  </div><!-- /screen-home -->
+
+  <!-- ═══════════════════════════════════════════════
+       SCREEN: NAVIGATION
+  ════════════════════════════════════════════════ -->
+  <div id="screen-nav" class="screen">
+
+    <div id="nav-header">
+      <div id="nav-destination">Navigating to: <span id="nav-dest-label">—</span></div>
+    </div>
+
+    <!-- Big direction arrow -->
+    <div id="nav-direction-box">
+      <div id="nav-arrow">⬆️</div>
+      <div id="nav-label">Calculating...</div>
+      <div id="nav-beep-pattern"></div>
+    </div>
+
+    <!-- Distance progress -->
+    <div id="nav-distance-bar">
+      <div id="nav-dist-label">Distance: — m remaining</div>
+      <div id="dist-track"><div id="dist-fill"></div></div>
+    </div>
+
+    <!-- Obstacle status bar -->
+    <div id="nav-obstacle-bar">No obstacles detected</div>
+
+    <!-- Step list -->
+    <div id="step-list-wrap">
+      <ul id="step-list"></ul>
+    </div>
+
+    <!-- Controls -->
+    <div id="nav-controls">
+      <button id="btn-stop-nav" onclick="stopNavigation()">✕ Stop Navigation</button>
+      <button id="btn-sos" onclick="triggerSOS()" title="Emergency SOS">🆘</button>
+    </div>
+
+  </div><!-- /screen-nav -->
+
+</div><!-- /app -->
+
+<!-- Arrived Overlay -->
+<div id="arrived-overlay">
+  <div class="big-emoji">🎯</div>
+  <h2>Arrived!</h2>
+  <p id="arrived-place-name">You have reached your destination.</p>
+  <button id="btn-dismiss-arrived" onclick="dismissArrived()">Done</button>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  SmartStick Navigator — Main App Script
+//  
+//  BLE UUIDs must match the ESP32 sketch exactly!
+// ══════════════════════════════════════════════════════════════
+
+// In navigator_app.html — must be IDENTICAL to .ino
+const BLE_SERVICE_UUID     = '12345678-1234-1234-1234-123456789abc';
+const BLE_CMD_CHAR_UUID    = '12345678-1234-1234-1234-123456789ab1';
+const BLE_NOTIFY_CHAR_UUID = '12345678-1234-1234-1234-123456789ab2';
+
+// ── State ─────────────────────────────────────────────────────
+let bleDevice      = null;
+let bleServer      = null;
+let cmdChar        = null;
+let notifyChar     = null;
+let bleConnected   = false;
+
+let userLat = null, userLng = null;
+let destLat = null, destLng = null;
+let destName = '';
+
+let navSteps       = [];
+let currentStep    = 0;
+let totalDist      = 0;
+let navInterval    = null;
+let watchId        = null;
+let lastObstDist   = null;
+
+// ── Favorites (saved locally) ─────────────────────────────────
+const DEFAULT_FAVORITES = [
+  { name: 'Home',     icon: '🏠', address: null },
+  { name: 'Hospital', icon: '🏥', address: null },
+  { name: 'School',   icon: '🏫', address: null },
+  { name: 'Mosque',   icon: '🕌', address: null },
+  { name: 'Market',   icon: '🏪', address: null },
+  { name: 'Park',     icon: '🌳', address: null },
+];
+
+// ── Beep patterns (visual representation) ────────────────────
+const PATTERNS = {
+  R: { label: 'TURN RIGHT', arrow: '➡️',  beeps: '♪',         cmd: 'R' },
+  L: { label: 'TURN LEFT',  arrow: '⬅️',  beeps: '♪ ♪',       cmd: 'L' },
+  S: { label: 'STRAIGHT',   arrow: '⬆️',  beeps: '♪ ♪ ♪',     cmd: 'S' },
+  U: { label: 'U-TURN',     arrow: '🔄',  beeps: '♪ ♪ ♪ ♪',   cmd: 'U' },
+  A: { label: 'ARRIVED!',   arrow: '🎯',  beeps: '♪♪♪♪♪',     cmd: 'A' },
+  X: { label: 'STOPPED',    arrow: '⏹️',  beeps: '♪———',       cmd: 'X' },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  renderFavorites();
+  requestLocation();
+
+  if (!navigator.bluetooth) {
+    toast('Web Bluetooth not supported. Use Android Chrome.', 'error', 5000);
+    document.getElementById('btn-ble-connect').disabled = true;
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  BLE
+// ══════════════════════════════════════════════════════════════
+async function connectBLE() {
+  if (bleConnected) { disconnectBLE(); return; }
+  setBLEStatus('connecting');
+  toast('Scanning for SmartStick...', 'info');
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'SmartStick' }],
+      optionalServices: [BLE_SERVICE_UUID]
+    });
+    bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnect);
+
+    bleServer = await bleDevice.gatt.connect();
+    const svc  = await bleServer.getPrimaryService(BLE_SERVICE_UUID);
+    cmdChar    = await svc.getCharacteristic(BLE_CMD_CHAR_UUID);
+    notifyChar = await svc.getCharacteristic(BLE_NOTIFY_CHAR_UUID);
+
+    // Listen for notifications from ESP32
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener('characteristicvaluechanged', onBLENotify);
+
+    bleConnected = true;
+    setBLEStatus('connected', bleDevice.name || 'SmartStick');
+    document.getElementById('ble-card').classList.add('connected');
+    document.getElementById('btn-ble-connect').textContent = '✓ Connected — Tap to disconnect';
+    toast('SmartStick connected!', 'success');
+  } catch (e) {
+    setBLEStatus('disconnected');
+    toast('BLE connection failed: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+function toggleBLE() {
+  if (bleConnected) disconnectBLE(); else connectBLE();
+}
+
+function disconnectBLE() {
+  if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+  onBLEDisconnect();
+}
+
+function onBLEDisconnect() {
+  bleConnected = false;
+  cmdChar = null; notifyChar = null;
+  setBLEStatus('disconnected');
+  document.getElementById('ble-card').classList.remove('connected');
+  document.getElementById('btn-ble-connect').textContent = '📡 Connect SmartStick';
+  document.getElementById('ble-device-name').textContent = '—';
+  toast('SmartStick disconnected', 'warn');
+}
+
+function onBLENotify(evt) {
+  const val = new TextDecoder().decode(evt.target.value).trim();
+  console.log('[BLE notify]', val);
+
+  if (val === 'SOS') {
+    toast('⚠️ SOS triggered on stick!', 'error', 5000);
+  } else if (val.startsWith('DIST:')) {
+    const cm = parseInt(val.split(':')[1]);
+    lastObstDist = cm;
+    updateObstacleBar(cm);
+  } else if (val === 'READY') {
+    toast('SmartStick is ready!', 'success');
+  }
+}
+
+async function sendBLECommand(cmd) {
+  if (!bleConnected || !cmdChar) {
+    toast('SmartStick not connected!', 'error');
+    return false;
+  }
+  try {
+    const enc = new TextEncoder().encode(cmd);
+    await cmdChar.writeValueWithoutResponse(enc);
+    console.log('[BLE send]', cmd);
+    return true;
+  } catch (e) {
+    toast('BLE send error: ' + e.message, 'error');
+    console.error(e);
+    return false;
+  }
+}
+
+function setBLEStatus(state, name = '') {
+  const dot   = document.getElementById('ble-dot');
+  const label = document.getElementById('ble-label');
+  const nameEl = document.getElementById('ble-device-name');
+  dot.className = state;
+  label.textContent = state === 'connected' ? name : state === 'connecting' ? 'Connecting...' : 'Not connected';
+  if (name) nameEl.textContent = name;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOCATION
+// ══════════════════════════════════════════════════════════════
+function requestLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => { userLat = pos.coords.latitude; userLng = pos.coords.longitude; },
+    err => toast('GPS unavailable: ' + err.message, 'warn'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════════════════════════
+let searchTimer = null;
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  const q = document.getElementById('search-input').value.trim();
+  if (q.length < 2) { document.getElementById('search-results').innerHTML = ''; return; }
+  searchTimer = setTimeout(() => doSearch(), 600);
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+
+  const resultsEl = document.getElementById('search-results');
+  resultsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Searching...</div>';
+
+  try {
+    // Use Nominatim (OpenStreetMap) — free, no API key needed
+    let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`;
+    if (userLat && userLng) {
+      url += `&viewbox=${userLng-0.1},${userLat+0.1},${userLng+0.1},${userLat-0.1}&bounded=0`;
+    }
+
+    const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await resp.json();
+
+    if (!data.length) {
+      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">No results found. Try a different search.</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = '';
+    data.forEach(place => {
+      const icon = getPlaceIcon(place.type, place.class);
+      const name = place.display_name.split(',').slice(0, 2).join(', ');
+      const dist = userLat ? getDistKm(userLat, userLng, parseFloat(place.lat), parseFloat(place.lon)) : null;
+      const card = document.createElement('div');
+      card.className = 'place-card';
+      card.innerHTML = `
+        <div class="place-icon">${icon}</div>
+        <div class="place-info">
+          <h3>${name.split(',')[0]}</h3>
+          <p>${name.split(',').slice(1).join(',').trim() || place.type}${dist ? ' · ' + dist : ''}</p>
+        </div>
+      `;
+      card.onclick = () => selectDestination(parseFloat(place.lat), parseFloat(place.lon), place.display_name.split(',')[0]);
+      resultsEl.appendChild(card);
+    });
+  } catch (e) {
+    resultsEl.innerHTML = '<div style="color:var(--danger);font-size:13px;padding:8px">Search failed. Check internet connection.</div>';
+  }
+}
+
+function getPlaceIcon(type, cls) {
+  const map = {
+    hospital: '🏥', clinic: '🏥', pharmacy: '💊', school: '🏫',
+    university: '🎓', mosque: '🕌', church: '⛪', park: '🌳',
+    restaurant: '🍽️', cafe: '☕', supermarket: '🏪', market: '🏬',
+    station: '🚉', bus_stop: '🚌', hotel: '🏨', bank: '🏦',
+    atm: '💳', police: '👮', fire_station: '🚒', airport: '✈️',
+  };
+  return map[type] || map[cls] || '📍';
+}
+
+function getDistKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return d < 1 ? Math.round(d*1000) + 'm' : d.toFixed(1) + 'km';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FAVORITES
+// ══════════════════════════════════════════════════════════════
+function renderFavorites() {
+  const list = document.getElementById('favorites-list');
+  const saved = JSON.parse(localStorage.getItem('smartstick_favs') || 'null') || DEFAULT_FAVORITES;
+  list.innerHTML = '';
+  saved.forEach((fav, i) => {
+    const card = document.createElement('div');
+    card.className = 'place-card';
+    card.innerHTML = `
+      <div class="place-icon">${fav.icon}</div>
+      <div class="place-info">
+        <h3>${fav.name}</h3>
+        <p>${fav.address ? fav.address.split(',').slice(0,2).join(',') : 'Tap to set location'}</p>
+      </div>
+    `;
+    card.onclick = () => {
+      if (fav.lat && fav.lng) {
+        selectDestination(fav.lat, fav.lng, fav.name);
+      } else {
+        toast('Search for ' + fav.name + ' to save it', 'info');
+        document.getElementById('search-input').value = fav.name;
+        doSearch();
+      }
+    };
+    list.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VOICE SEARCH
+// ══════════════════════════════════════════════════════════════
+function startVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { toast('Voice search not supported', 'error'); return; }
+  const rec = new SpeechRecognition();
+  rec.lang = 'en-US'; rec.interimResults = false;
+  const btn = document.getElementById('btn-voice');
+  btn.classList.add('listening');
+  rec.onresult = e => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('search-input').value = text;
+    doSearch();
+  };
+  rec.onend = () => btn.classList.remove('listening');
+  rec.onerror = () => { btn.classList.remove('listening'); toast('Voice error', 'error'); };
+  rec.start();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════════
+async function selectDestination(lat, lng, name) {
+  if (!bleConnected) {
+    toast('Connect SmartStick first!', 'warn', 3000);
+    return;
+  }
+  if (!userLat) {
+    toast('Getting your GPS location...', 'info');
+    await new Promise(res => navigator.geolocation.getCurrentPosition(pos => {
+      userLat = pos.coords.latitude; userLng = pos.coords.longitude; res();
+    }, res, { enableHighAccuracy: true, timeout: 8000 }));
+  }
+
+  destLat = lat; destLng = lng; destName = name;
+  document.getElementById('nav-dest-label').textContent = name;
+  document.getElementById('nav-label').textContent = 'Calculating...';
+  document.getElementById('nav-arrow').textContent = '⏳';
+
+  showScreen('screen-nav');
+  toast('Navigation started!', 'success');
+
+  // Fetch walking route from OSRM (free, no API key)
+  await fetchRoute(userLat, userLng, destLat, destLng);
+
+  // Start watching position
+  watchId = navigator.geolocation.watchPosition(
+    pos => onPositionUpdate(pos.coords.latitude, pos.coords.longitude),
+    err => console.warn('GPS error:', err),
+    { enableHighAccuracy: true, maximumAge: 2000 }
+  );
+}
+
+async function fetchRoute(fromLat, fromLng, toLat, toLng) {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/foot/${fromLng},${fromLat};${toLng},${toLat}?steps=true&geometries=geojson&overview=full`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.code !== 'Ok') throw new Error('Route not found');
+
+    const route = data.routes[0];
+    totalDist   = route.distance; // metres
+    navSteps    = [];
+    currentStep = 0;
+
+    route.legs[0].steps.forEach(step => {
+      if (step.maneuver.type === 'arrive') {
+        navSteps.push({ type: 'A', text: 'Arrived at destination', dist: 0,
+          lat: step.maneuver.location[1], lng: step.maneuver.location[0] });
+      } else {
+        const dir = maneuverToCmd(step.maneuver.type, step.maneuver.modifier);
+        navSteps.push({
+          type: dir,
+          text: step.name || step.maneuver.type,
+          dist: Math.round(step.distance),
+          lat:  step.maneuver.location[1],
+          lng:  step.maneuver.location[0]
+        });
+      }
+    });
+
+    renderStepList();
+    updateNavDisplay(navSteps[0]);
+    await sendNavCommand(navSteps[0].type);
+
+  } catch (e) {
+    console.error('Route error:', e);
+    toast('Could not get route. Check internet.', 'error');
+    // Fallback: calculate bearing-based direction only
+    useBearingNavigation();
+  }
+}
+
+function maneuverToCmd(type, modifier) {
+  if (type === 'turn') {
+    if (modifier === 'right' || modifier === 'sharp right') return 'R';
+    if (modifier === 'left'  || modifier === 'sharp left')  return 'L';
+    if (modifier === 'uturn')                               return 'U';
+    return 'S';
+  }
+  if (type === 'continue' || type === 'new name') return 'S';
+  if (type === 'roundabout') {
+    if (modifier === 'right') return 'R';
+    if (modifier === 'left')  return 'L';
+    return 'S';
+  }
+  return 'S';
+}
+
+// Fallback navigation if no internet: just use compass bearing
+function useBearingNavigation() {
+  toast('Using bearing navigation (offline)', 'warn');
+  navSteps = [{ type: 'S', text: 'Head toward destination', dist: Math.round(haversine(userLat,userLng,destLat,destLng)), lat: destLat, lng: destLng }];
+  currentStep = 0;
+  renderStepList();
+  updateNavDisplay(navSteps[0]);
+  sendNavCommand('S');
+}
+
+function onPositionUpdate(lat, lng) {
+  userLat = lat; userLng = lng;
+  if (!navSteps.length) return;
+
+  const step = navSteps[currentStep];
+  const distToStep = haversine(lat, lng, step.lat, step.lng);
+  const distToDest = haversine(lat, lng, destLat, destLng);
+
+  // Update progress bar
+  const progress = Math.max(0, Math.min(100, ((totalDist - distToDest) / totalDist) * 100));
+  document.getElementById('dist-fill').style.width = progress + '%';
+  document.getElementById('nav-dist-label').textContent = `Distance: ${Math.round(distToDest)}m remaining`;
+
+  // Advance to next step if within 15m of waypoint
+  if (distToStep < 15 && currentStep < navSteps.length - 1) {
+    currentStep++;
+    const next = navSteps[currentStep];
+    updateNavDisplay(next);
+    sendNavCommand(next.type);
+    renderStepList();
+  }
+
+  // Arrived within 10m of destination
+  if (distToDest < 10) {
+    triggerArrived();
+  }
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function sendNavCommand(cmd) {
+  if (!bleConnected) return;
+  const ok = await sendBLECommand(cmd);
+  if (ok) console.log('[NAV] Sent command:', cmd);
+}
+
+function updateNavDisplay(step) {
+  const p = PATTERNS[step.type] || PATTERNS.S;
+  const arrowEl = document.getElementById('nav-arrow');
+  const labelEl = document.getElementById('nav-label');
+  const beepEl  = document.getElementById('nav-beep-pattern');
+
+  arrowEl.textContent = p.arrow;
+  labelEl.textContent = p.label;
+  beepEl.textContent  = p.beeps;
+
+  // Flash animation
+  arrowEl.classList.remove('flash');
+  void arrowEl.offsetWidth; // reflow
+  arrowEl.classList.add('flash');
+}
+
+function renderStepList() {
+  const list = document.getElementById('step-list');
+  list.innerHTML = '';
+  navSteps.forEach((step, i) => {
+    const p  = PATTERNS[step.type] || PATTERNS.S;
+    const li = document.createElement('li');
+    li.className = 'step-item' +
+      (i === currentStep ? ' active-step' : i < currentStep ? ' done-step' : '');
+    li.innerHTML = `
+      <span class="step-arrow">${p.arrow}</span>
+      <span class="step-text">${step.text || p.label}</span>
+      <span class="step-dist">${step.dist > 0 ? step.dist + 'm' : ''}</span>
+    `;
+    list.appendChild(li);
+  });
+  // Scroll active step into view
+  const active = list.querySelector('.active-step');
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function updateObstacleBar(cm) {
+  const bar = document.getElementById('nav-obstacle-bar');
+  if (cm <= 30) {
+    bar.textContent = `⚠️ DANGER! Obstacle at ${cm}cm`;
+    bar.className = 'danger';
+  } else if (cm <= 80) {
+    bar.textContent = `⚠ Obstacle nearby: ${cm}cm`;
+    bar.className = 'warning';
+  } else {
+    bar.textContent = `Obstacle: ${cm}cm`;
+    bar.className = '';
+  }
+}
+
+async function triggerArrived() {
+  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  updateNavDisplay({ type: 'A' });
+  await sendNavCommand('A');
+  document.getElementById('arrived-place-name').textContent = `You have reached: ${destName}`;
+  document.getElementById('arrived-overlay').classList.add('show');
+}
+
+function dismissArrived() {
+  document.getElementById('arrived-overlay').classList.remove('show');
+  stopNavigation();
+}
+
+function stopNavigation() {
+  if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  clearInterval(navInterval);
+  navSteps = []; currentStep = 0;
+  sendBLECommand('X');
+  showScreen('screen-home');
+  toast('Navigation stopped', 'info');
+}
+
+async function triggerSOS() {
+  toast('🆘 SOS sent!', 'error', 5000);
+  await sendBLECommand('D'); // Send danger/SOS
+}
+
+// ══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+let toastTimer = null;
+function toast(msg, type = 'info', duration = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+</script>
+</body>
+</html>
