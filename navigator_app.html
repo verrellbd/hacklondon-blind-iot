@@ -661,22 +661,27 @@ function refreshRoomList() {
 const ARRIVE_THRESHOLD = 8;    // metres — auto-arrive within 8m
 const CHECK_INTERVAL   = 2000; // ms — check direction every 2s
 const REPEAT_INTERVAL  = 6000; // ms — re-beep same direction every 6s
-const TURN_THRESHOLD   = 25;   // degrees — angle to trigger L/R beep
+const TURN_THRESHOLD   = 45;   // degrees — angle to trigger L/R beep
 
 let navTimer       = null;
 let lastSentCmd    = '';
 let lastSentTime   = 0;
 let navActive      = false;
+let pendingCmd     = '';      // candidate direction
+let pendingCount   = 0;       // how many ticks it's been consistent
+const CONFIRM_TICKS = 2;      // must see same direction N times before sending
 
 function startNavTo(room) {
   if (!bleConnected) { toast('Connect SmartStick first!', 'warn'); return; }
   if (!room.lat)     { toast('No GPS for ' + room.name + '. Capture its location first.', 'warn', 4000); return; }
   if (!userLat)      { toast('Your GPS not ready yet. Wait a moment.', 'warn'); return; }
 
-  destRoom  = room;
-  navActive = true;
+  destRoom     = room;
+  navActive    = true;
   lastSentCmd  = '';
   lastSentTime = 0;
+  pendingCmd   = '';
+  pendingCount = 0;
 
   document.getElementById('nav-dest-name').textContent     = room.icon + ' ' + room.name;
   document.getElementById('arrived-room-name').textContent = 'You reached: ' + room.name;
@@ -729,7 +734,16 @@ async function autoNavTick() {
   const now = Date.now();
   document.getElementById('dbg-cmd').textContent = cmd;
 
-  const dirChanged   = cmd !== lastSentCmd;
+  // Smoothing: only commit to a new direction after CONFIRM_TICKS consistent readings
+  if (cmd === pendingCmd) {
+    pendingCount++;
+  } else {
+    pendingCmd   = cmd;
+    pendingCount = 1;
+  }
+
+  const confirmed    = pendingCount >= CONFIRM_TICKS;
+  const dirChanged   = confirmed && cmd !== lastSentCmd;
   const timeToRepeat = (now - lastSentTime) >= REPEAT_INTERVAL;
 
   if (dirChanged || timeToRepeat) {
