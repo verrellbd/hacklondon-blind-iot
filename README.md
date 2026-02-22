@@ -2,8 +2,7 @@
 
 > **HackLondon 2026** — Built in 24 hours
 
-**Team:** Name 1 · Name 2 · Name 3
-
+**Team:** 1. Abitya Bagaskara 2. Dean Verrell Matalino Ariefin 3. Raissa Azarine
 ---
 
 ## What is SmartCane?
