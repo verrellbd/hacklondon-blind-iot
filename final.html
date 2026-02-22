@@ -88,6 +88,56 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 #dist-remaining{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
 #debug-panel{padding:6px 16px;background:#0a0a0f;border-top:1px solid #252840;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a5d7a;line-height:1.8}
 
+/* ── OBSTACLE SCREEN ───────────────────── */
+#screen-obstacle{gap:0;padding:16px;overflow-y:auto}
+.obs-section{margin-bottom:16px}
+.obs-section h2{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:1px;margin-bottom:10px}
+
+/* Big live status card */
+#obs-main-card{
+  background:var(--s2);border:2px solid var(--border);border-radius:var(--r);
+  padding:24px 16px;text-align:center;display:flex;flex-direction:column;
+  align-items:center;gap:8px;transition:border-color .3s,background .3s;margin-bottom:16px;
+}
+#obs-main-card.lvl1{border-color:var(--accent3);background:rgba(255,217,61,.06)}
+#obs-main-card.lvl2{border-color:#ff9800;background:rgba(255,152,0,.08);animation:obstblink .8s infinite}
+#obs-main-card.lvl3{border-color:var(--accent2);background:rgba(255,107,107,.12);animation:obstblink .4s infinite}
+#obs-icon{font-size:52px;line-height:1}
+#obs-level-label{font-size:18px;font-weight:800;letter-spacing:2px;font-family:'IBM Plex Mono',monospace}
+#obs-dist-label{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+/* Distance bar */
+#obs-bar-wrap{width:100%;margin-top:4px}
+#obs-bar-track{width:100%;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
+#obs-bar-fill{height:100%;width:0%;border-radius:4px;transition:width .3s,background .3s;background:var(--accent)}
+
+/* Threshold cards */
+.obs-threshold-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.obs-thresh-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center}
+.obs-thresh-card .t-icon{font-size:20px;margin-bottom:4px}
+.obs-thresh-card .t-label{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-bottom:2px}
+.obs-thresh-card .t-dist{font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.obs-thresh-card.notice .t-dist{color:var(--accent3)}
+.obs-thresh-card.warning .t-dist{color:#ff9800}
+.obs-thresh-card.danger  .t-dist{color:var(--accent2)}
+
+/* Vibration toggle */
+#vib-unlock-banner{
+  background:rgba(255,217,61,.1);border:1px solid var(--accent3);border-radius:10px;
+  padding:12px;text-align:center;font-size:12px;font-family:'IBM Plex Mono',monospace;
+  color:var(--accent3);cursor:pointer;margin-bottom:12px;
+}
+#vib-unlock-banner.unlocked{background:rgba(79,255,176,.08);border-color:var(--accent);color:var(--accent)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.toggle-row span{font-size:13px;color:var(--text)}
+.toggle-row small{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);display:block;margin-top:2px}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--s3);border-radius:12px;cursor:pointer;transition:.3s}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:var(--muted);border-radius:50%;transition:.3s}
+.toggle input:checked + .toggle-slider{background:rgba(79,255,176,.3);border:1px solid var(--accent)}
+.toggle input:checked + .toggle-slider:before{transform:translateX(18px);background:var(--accent)}
+
 /* ── SOS SCREEN ─────────────────────────── */
 #screen-sos{gap:0;padding:16px}
 .sos-section{margin-bottom:14px}
@@ -170,9 +220,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 
   <!-- TABS -->
   <div id="tabs">
-    <div class="tab active" onclick="switchTab('nav')"    id="tab-nav">NAVIGATE</div>
-    <div class="tab"        onclick="switchTab('sos')"    id="tab-sos">🆘 SOS</div>
-    <div class="tab"        onclick="switchTab('manage')" id="tab-manage">ROOMS</div>
+    <div class="tab active" onclick="switchTab('nav')"      id="tab-nav">NAV</div>
+    <div class="tab"        onclick="switchTab('obstacle')" id="tab-obstacle">📡 OBSTACLE</div>
+    <div class="tab"        onclick="switchTab('sos')"      id="tab-sos">🆘 SOS</div>
+    <div class="tab"        onclick="switchTab('manage')"   id="tab-manage">ROOMS</div>
   </div>
 
   <!-- ═══════ NAVIGATE SCREEN ═══════ -->
@@ -234,6 +285,84 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
       </div>
     </div>
   </div><!-- /screen-nav -->
+
+  <!-- ═══════ OBSTACLE SCREEN ═══════ -->
+  <div id="screen-obstacle" class="screen">
+
+    <!-- Live status card -->
+    <div id="obs-main-card">
+      <div id="obs-icon">📡</div>
+      <div id="obs-level-label">CLEAR</div>
+      <div id="obs-dist-label">No obstacle detected</div>
+      <div id="obs-bar-wrap">
+        <div id="obs-bar-track"><div id="obs-bar-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Thresholds reference -->
+    <div class="obs-section">
+      <h2>DETECTION ZONES</h2>
+      <div class="obs-threshold-row">
+        <div class="obs-thresh-card notice">
+          <div class="t-icon">⚠️</div>
+          <div class="t-label">NOTICE</div>
+          <div class="t-dist">&lt; 150cm</div>
+        </div>
+        <div class="obs-thresh-card warning">
+          <div class="t-icon">🔶</div>
+          <div class="t-label">WARNING</div>
+          <div class="t-dist">&lt; 80cm</div>
+        </div>
+        <div class="obs-thresh-card danger">
+          <div class="t-icon">🚨</div>
+          <div class="t-label">DANGER</div>
+          <div class="t-dist">&lt; 30cm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vibration settings -->
+    <div class="obs-section">
+      <h2>VIBRATION SETTINGS</h2>
+
+      <!-- Unlock banner — tap to unlock vibration permission -->
+      <div id="vib-unlock-banner" onclick="unlockVibration()">
+        📳 TAP HERE FIRST to enable phone vibration
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <span>Vibrate on obstacle</span>
+          <small>Phone vibrates when obstacle detected</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="tog-vib-obstacle" checked onchange="saveVibSettings()"/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <span>Vibrate on NOTICE only</span>
+          <small>Include subtle 150cm alerts</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="tog-vib-notice" checked onchange="saveVibSettings()"/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <span>Pause nav during danger</span>
+          <small>Stop direction beeps when obstacle is close</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="tog-pause-nav" checked onchange="saveVibSettings()"/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+  </div><!-- /screen-obstacle -->
 
   <!-- ═══════ SOS SCREEN ═══════ -->
   <div id="screen-sos" class="screen">
@@ -329,6 +458,10 @@ let destRoom = null;
 let lastObstacleLevel = 0;
 let obstacleActive    = false;
 let navPaused         = false;
+let vibUnlocked       = false;
+
+// Vibration settings (loaded from localStorage)
+let vibSettings = { obstacle: true, notice: true, pauseNav: true };
 
 // ── Nav direction constants ────────────────────────────────
 const DIR = {
@@ -364,6 +497,7 @@ const VIBRATE = {
 document.addEventListener('DOMContentLoaded', () => {
   loadRooms();
   loadSosContact();
+  loadVibSettings();
   startGPS();
   startCompass();
   if (!navigator.bluetooth) toast('Web Bluetooth not supported. Use Android Chrome.', 'err', 5000);
@@ -440,11 +574,15 @@ function onBLENotify(e) {
     const level = val === 'OBS:DANGER' ? 3 : val === 'OBS:WARN' ? 2 : 1;
     obstacleActive = true;
     if (level !== lastObstacleLevel) {
-      if (navigator.vibrate) navigator.vibrate(VIBRATE[level]);
+      // Vibrate only if settings allow
+      const shouldVib = vibSettings.obstacle &&
+        (level >= 2 || vibSettings.notice) &&
+        vibUnlocked;
+      if (shouldVib && navigator.vibrate) navigator.vibrate(VIBRATE[level]);
       lastObstacleLevel = level;
     }
-    navPaused = (level >= 2);
-    updateObstacleUI(level, 0);
+    navPaused = vibSettings.pauseNav && (level >= 2);
+    updateObstacleUI(level, val);
     return;
   }
 
@@ -455,14 +593,73 @@ function onBLENotify(e) {
   }
 }
 
-// ── Obstacle UI ───────────────────────────────────────────
-function updateObstacleUI(level, cm) {
+// ── Obstacle UI — updates BOTH the nav bar AND the obstacle screen ────
+function updateObstacleUI(level, raw) {
+  // ── Nav screen bar ────────────────────────────────────────
   const bar = document.getElementById('obstacle-bar');
-  if (!bar) return;
-  const labels = ['', '⚠ Obstacle nearby', '⚠️ WARNING — slow down', '🚨 DANGER — STOP!'];
-  const cls    = ['', 'notice', 'warning', 'danger'];
-  bar.className   = 'obstacle-bar' + (level > 0 ? ' ' + cls[level] : '');
-  bar.textContent = level > 0 ? labels[level] : '';
+  if (bar) {
+    const labels = ['', '⚠ Obstacle nearby', '⚠️ WARNING — slow down', '🚨 DANGER — STOP!'];
+    const cls    = ['', 'notice', 'warning', 'danger'];
+    bar.className   = 'obstacle-bar' + (level > 0 ? ' ' + cls[level] : '');
+    bar.textContent = level > 0 ? labels[level] : '';
+  }
+
+  // ── Obstacle screen ────────────────────────────────────────
+  const card      = document.getElementById('obs-main-card');
+  const icon      = document.getElementById('obs-icon');
+  const lblLevel  = document.getElementById('obs-level-label');
+  const lblDist   = document.getElementById('obs-dist-label');
+  const barFill   = document.getElementById('obs-bar-fill');
+
+  const configs = {
+    0: { icon:'📡', label:'CLEAR',   dist:'No obstacle detected',  fill:0,   color:'var(--accent)',  cls:'' },
+    1: { icon:'⚠️', label:'NOTICE',  dist:'Obstacle within 150cm', fill:40,  color:'var(--accent3)', cls:'lvl1' },
+    2: { icon:'🔶', label:'WARNING', dist:'Obstacle within 80cm',  fill:70,  color:'#ff9800',        cls:'lvl2' },
+    3: { icon:'🚨', label:'DANGER',  dist:'Obstacle within 30cm — STOP!', fill:100, color:'var(--accent2)', cls:'lvl3' },
+  };
+
+  const cfg = configs[level] || configs[0];
+  if (card)     { card.className = 'obs-main-card' + (cfg.cls ? ' ' + cfg.cls : ''); }
+  if (icon)     icon.textContent     = cfg.icon;
+  if (lblLevel) lblLevel.textContent = cfg.label;
+  if (lblDist)  lblDist.textContent  = cfg.dist;
+  if (barFill)  { barFill.style.width = cfg.fill + '%'; barFill.style.background = cfg.color; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  OBSTACLE SCREEN — VIBRATION SETTINGS
+// ══════════════════════════════════════════════════════════
+function unlockVibration() {
+  if (navigator.vibrate) {
+    navigator.vibrate(200);
+    vibUnlocked = true;
+    const b = document.getElementById('vib-unlock-banner');
+    b.textContent = '✅ Vibration unlocked!';
+    b.classList.add('unlocked');
+    b.onclick = null;
+  } else {
+    document.getElementById('vib-unlock-banner').textContent = '❌ Vibration not supported on this device';
+  }
+}
+
+function loadVibSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('vib_settings') || '{}');
+    vibSettings.obstacle = s.obstacle !== false;
+    vibSettings.notice   = s.notice   !== false;
+    vibSettings.pauseNav = s.pauseNav !== false;
+  } catch { /* use defaults */ }
+  document.getElementById('tog-vib-obstacle').checked = vibSettings.obstacle;
+  document.getElementById('tog-vib-notice').checked   = vibSettings.notice;
+  document.getElementById('tog-pause-nav').checked    = vibSettings.pauseNav;
+}
+
+function saveVibSettings() {
+  vibSettings.obstacle = document.getElementById('tog-vib-obstacle').checked;
+  vibSettings.notice   = document.getElementById('tog-vib-notice').checked;
+  vibSettings.pauseNav = document.getElementById('tog-pause-nav').checked;
+  localStorage.setItem('vib_settings', JSON.stringify(vibSettings));
+  toast('Settings saved', 'ok', 1500);
 }
 
 // ══════════════════════════════════════════════════════════
