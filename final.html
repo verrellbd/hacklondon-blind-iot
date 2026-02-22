@@ -208,7 +208,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 
   <!-- TOPBAR -->
   <div id="topbar">
-    <h1>SmartStick <span>v1.0</span></h1>
+    <h1>SmartCane <span>v1.0</span></h1>
     <div id="topbar-right">
       <div id="sos-indicator">🆘 SOS</div>
       <div id="ble-btn" onclick="connectBLE()">
@@ -434,7 +434,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 
 <script>
 // ══════════════════════════════════════════════════════════
-//  SmartStick Final — Navigation + Obstacle + SOS
+//  SmartCane Final — Navigation + Obstacle + SOS
 // ══════════════════════════════════════════════════════════
 
 const BLE_SERVICE_UUID     = '12345678-1234-1234-1234-123456789abc';
@@ -509,10 +509,10 @@ document.addEventListener('DOMContentLoaded', () => {
 async function connectBLE() {
   if (bleConnected) { disconnectBLE(); return; }
   setBleDot('connecting');
-  toast('Scanning for SmartStick...', 'info');
+  toast('Scanning for SmartCane...', 'info');
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'SmartStick' }],
+      filters: [{ name: 'SmartCane' }],
       optionalServices: [BLE_SERVICE_UUID]
     });
     bleDevice.addEventListener('gattserverdisconnected', onBleDisconnect);
@@ -524,7 +524,7 @@ async function connectBLE() {
     notifyChar.addEventListener('characteristicvaluechanged', onBLENotify);
     bleConnected = true;
     setBleDot('connected');
-    toast('SmartStick connected!', 'ok');
+    toast('SmartCane connected!', 'ok');
   } catch(e) {
     setBleDot('off');
     toast('BLE failed: ' + e.message, 'err');
@@ -711,17 +711,17 @@ function triggerSOS() {
     navigator.geolocation.getCurrentPosition(
       pos => {
         const mapsUrl = `https://maps.google.com/?q=${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
-        const fullMsg = `🆘 SOS - SmartStick Emergency 🆘\n\n${baseMsg}\n\n📍 My location:\n${mapsUrl}`;
+        const fullMsg = `🆘 SOS - SmartCane Emergency 🆘\n\n${baseMsg}\n\n📍 My location:\n${mapsUrl}`;
         window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(fullMsg);
       },
       () => {
-        const fullMsg = `🆘 SOS - SmartStick Emergency 🆘\n\n${baseMsg}\n\n(Location unavailable)`;
+        const fullMsg = `🆘 SOS - SmartCane Emergency 🆘\n\n${baseMsg}\n\n(Location unavailable)`;
         window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(fullMsg);
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );
   } else {
-    const fullMsg = `🆘 SOS - SmartStick Emergency 🆘\n\n${baseMsg}`;
+    const fullMsg = `🆘 SOS - SmartCane Emergency 🆘\n\n${baseMsg}`;
     window.location.href = 'https://wa.me/' + c.phone + '?text=' + encodeURIComponent(fullMsg);
   }
 
@@ -827,7 +827,7 @@ function updateDistRemaining(dist) {
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════
 function startNavTo(room) {
-  if (!bleConnected) { toast('Connect SmartStick first!', 'warn'); return; }
+  if (!bleConnected) { toast('Connect SmartCane first!', 'warn'); return; }
   if (!room.lat)     { toast('No GPS for ' + room.name, 'warn', 4000); return; }
   if (!userLat)      { toast('GPS not ready yet', 'warn'); return; }
 
