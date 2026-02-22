@@ -512,7 +512,7 @@ async function connectBLE() {
   toast('Scanning for SmartCane...', 'info');
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'SmartCane' }],
+      filters: [{ name: 'SmartStick' }],
       optionalServices: [BLE_SERVICE_UUID]
     });
     bleDevice.addEventListener('gattserverdisconnected', onBleDisconnect);
